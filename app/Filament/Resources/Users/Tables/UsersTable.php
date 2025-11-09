@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -15,36 +16,43 @@ class UsersTable
         return $table
             ->columns([
                 TextColumn::make('dni')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('DNI'),
                 TextColumn::make('name')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Nombre Completo'),
                 TextColumn::make('email')
-                    ->label('Email address')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Correo Electrónico'),
                 TextColumn::make('phone')
-                    ->searchable(),
-                TextColumn::make('email_verified_at')
-                    ->dateTime()
-                    ->sortable(),
+                    ->searchable()
+                    ->label('Teléfono'),
+                IconColumn::make('is_active')
+                    ->boolean()
+                    ->label('Operativo'),
+
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
+                    ->label('Creado En')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
+                    ->label('Actualizado En')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()->label('Editar'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                    DeleteBulkAction::make()
+                    ->label('Eliminar Seleccionados'),
+                ])->label('Acciones en Lote'),
             ]);
     }
 }

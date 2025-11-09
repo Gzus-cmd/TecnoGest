@@ -11,14 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('printers', function (Blueprint $table) {
+        Schema::create('componentables', function (Blueprint $table) {
             $table->id();
-            $table->string('model');
-            $table->string('type');
-            $table->boolean('color');
-            $table->boolean('scanner');            
-            $table->boolean('usb');
-            $table->boolean('network');
+            $table->foreignId('component_id')->constrained()->onDelete('cascade');
+            $table->morphs('componentable');
+            $table->date('assigned_at');
+            $table->date('removed_at')->nullable();
             $table->timestamps();
         });
     }
@@ -28,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('printers');
+        Schema::dropIfExists('componentables');
     }
 };

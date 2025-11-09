@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->morphs('componentable');
             $table->string('serial');
-            $table->date('input_date');
+            $table->date('input_date')->nullable();
             $table->date('output_date')->nullable();
             $table->enum('status', ['Operativo', 'Deficiente', 'Retirado']);
             $table->integer('warranty_months')->nullable();

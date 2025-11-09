@@ -13,11 +13,13 @@ return new class extends Migration
     {
         Schema::create('projectors', function (Blueprint $table) {
             $table->id();
-            $table->string('model');
-            $table->string('resolution');
-            $table->unsignedBigInteger('lumens');
-            $table->boolean('vga');
-            $table->boolean('hdmi');
+            $table->foreignId('modelo_id')->constrained('projector_models')->onDelete('cascade');
+            $table->string('serial')->unique();
+            $table->foreignId('location_id')->constrained('locations');
+            $table->enum('status', ['Activo', 'Inactivo', 'En Mantenimiento', 'Desmantelado'])->default('Activo');
+            $table->integer('warranty_months')->nullable();
+            $table->date('input_date')->nullable();
+            $table->date('output_date')->nullable();
             $table->timestamps();
         });
     }

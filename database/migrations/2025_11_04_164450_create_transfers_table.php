@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->morphs('deviceable');
             $table->foreignId('user_id')->constrained();
-            $table->foreignId('origen_id')->constrained('locations');
-            $table->foreignId('destino_id')->constrained('locations');
+            $table->foreignId('origin_id')->constrained('locations');
+            $table->foreignId('destiny_id')->constrained('locations');
             $table->date('date');
             $table->text('reason');
             $table->timestamps();

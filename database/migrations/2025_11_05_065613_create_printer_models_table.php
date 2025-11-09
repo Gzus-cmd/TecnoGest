@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('component_computer', function (Blueprint $table) {
+        Schema::create('printer_models', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('component_id')->constrained()->onDelete('cascade');
-            $table->foreignId('computer_id')->constrained()->onDelete('cascade');
-            $table->string('role');
-            $table->date('assigned_at');
-            $table->date('removed_at')->nullable();
+            $table->string('brand');
+            $table->string('model');
+            $table->string('type');
+            $table->boolean('color');
+            $table->boolean('scanner');            
+            $table->boolean('wifi');
+            $table->boolean('ethernet');
             $table->timestamps();
         });
     }
@@ -27,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('component_computer');
+        Schema::dropIfExists('printer_models');
     }
 };
