@@ -18,6 +18,33 @@ class Transfer extends Model
         'reason',
     ];
 
+    protected static function booted(): void
+    {
+        // Cuando se crea un nuevo traslado
+        static::created(function (Transfer $transfer) {
+            $transfer->updateDeviceLocation();
+        });
+
+        // Cuando se actualiza un traslado existente
+        static::updated(function (Transfer $transfer) {
+            // Solo actualizar si cambió el destino
+            if ($transfer->wasChanged('destiny_id')) {
+                $transfer->updateDeviceLocation();
+            }
+        });
+    }
+
+    /**
+     * Actualiza la ubicación del dispositivo al destino del traslado
+     */
+    protected function updateDeviceLocation(): void
+    {
+        $device = $this->deviceable;
+        
+        if ($device && $this->destiny_id) {
+            $device->update(['location_id' => $this->destiny_id]);
+        }
+    }
 
     public function deviceable() : MorphTo
     {
@@ -38,6 +65,4 @@ class Transfer extends Model
     {
         return $this->belongsTo(Location::class, 'destiny_id');
     }
-
-    
 }

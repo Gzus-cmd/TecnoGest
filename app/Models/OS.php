@@ -12,7 +12,6 @@ class OS extends Model
     protected $fillable = [
         'name',
         'version',
-        'license_key',
         'architecture',
     ];
 

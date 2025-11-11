@@ -16,7 +16,7 @@ class ListPrinters extends ListRecords
     {
         return [
             CreateAction::make()
-            ->label('Registrar Impresora'),
+                ->label('Registrar Impresora'),
         ];
     }
 }

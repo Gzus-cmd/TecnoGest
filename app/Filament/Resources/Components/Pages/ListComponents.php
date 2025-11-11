@@ -8,6 +8,7 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class ListComponents extends ListRecords
 {
@@ -20,7 +21,7 @@ class ListComponents extends ListRecords
     {
         return [
             CreateAction::make()
-            ->label('Registrar Componente'),
+                ->label('Registrar Componente'),
         ];
     }
 
@@ -64,34 +65,66 @@ class ListComponents extends ListRecords
             'printers' => Tab::make('Impresoras')
                 ->icon(Heroicon::Printer)
                 ->modifyQueryUsing(fn (Builder $query) => $query
-                ->whereIn('componentable_type', [
-                        \App\Models\PrinterModel::class,
-                        #Printer_Replacement
-                    ])
-                ->where('status', '!=', 'Retirado')
-            ),
+                    ->where('componentable_type', \App\Models\SparePart::class)
+                    ->whereExists(function ($q) {
+                        $q->select(DB::raw(1))
+                          ->from('spare_parts')
+                          ->whereColumn('spare_parts.id', 'components.componentable_id')
+                          ->whereIn('spare_parts.type', ['Cabezal de Impresión', 'Rodillo', 'Fusor']);
+                    })
+                    ->where('status', '!=', 'Retirado')
+                ),
+
+            'projectors' => Tab::make('Proyectores')
+                ->icon(Heroicon::Tv)
+                ->modifyQueryUsing(fn (Builder $query) => $query
+                    ->where('componentable_type', \App\Models\SparePart::class)
+                    ->whereExists(function ($q) {
+                        $q->select(DB::raw(1))
+                          ->from('spare_parts')
+                          ->whereColumn('spare_parts.id', 'components.componentable_id')
+                          ->whereIn('spare_parts.type', ['Lámpara de Proyector', 'Lente']);
+                    })
+                    ->where('status', '!=', 'Retirado')
+                ),
 
             'others' => Tab::make('Otros')
                 ->icon(Heroicon::WrenchScrewdriver)
                 ->modifyQueryUsing(fn (Builder $query) => $query
-                ->whereNotIn('componentable_type', [
-                    \App\Models\CPU::class,
-                    \App\Models\Motherboard::class,
-                    \App\Models\GPU::class,
-                    \App\Models\RAM::class,
-                    \App\Models\ROM::class,
-                    \App\Models\PowerSupply::class,
-                    \App\Models\NetworkAdapter::class,
-                    \App\Models\TowerCase::class,
-                    \App\Models\Monitor::class,
-                    \App\Models\Keyboard::class,
-                    \App\Models\Mouse::class,
-                    \App\Models\Splitter::class,
-                    \App\Models\AudioDevice::class,
-                    \App\Models\PrinterModel::class,
-                ])
-                ->where('status', '!=', 'Retirado')
-            ),
+                    ->where(function ($q) {
+                        $q->whereNotIn('componentable_type', [
+                            \App\Models\CPU::class,
+                            \App\Models\Motherboard::class,
+                            \App\Models\GPU::class,
+                            \App\Models\RAM::class,
+                            \App\Models\ROM::class,
+                            \App\Models\PowerSupply::class,
+                            \App\Models\NetworkAdapter::class,
+                            \App\Models\TowerCase::class,
+                            \App\Models\Monitor::class,
+                            \App\Models\Keyboard::class,
+                            \App\Models\Mouse::class,
+                            \App\Models\Splitter::class,
+                            \App\Models\AudioDevice::class,
+                        ])
+                        ->where(function ($subQ) {
+                            $subQ->where('componentable_type', '!=', \App\Models\SparePart::class)
+                                ->orWhereExists(function ($spareQ) {
+                                    $spareQ->select(DB::raw(1))
+                                          ->from('spare_parts')
+                                          ->whereColumn('spare_parts.id', 'components.componentable_id')
+                                          ->whereNotIn('spare_parts.type', [
+                                              'Cabezal de Impresión', 
+                                              'Rodillo', 
+                                              'Fusor',
+                                              'Lámpara de Proyector', 
+                                              'Lente'
+                                          ]);
+                                });
+                        });
+                    })
+                    ->where('status', '!=', 'Retirado')
+                ),
 
 
             'inactive' => Tab::make('Retirados')

@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateMonitor extends CreateRecord
 {
+    protected static ?string $title = 'Registrar Monitor';
+
     protected static string $resource = MonitorResource::class;
 }

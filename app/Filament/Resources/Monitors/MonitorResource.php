@@ -13,12 +13,23 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class MonitorResource extends Resource
 {
     protected static ?string $model = Monitor::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleGroup;
+
+    protected static ?string $navigationLabel = 'Monitor';
+
+    protected static ?string $modelLabel = 'Monitor';
+
+    protected static ?string $pluralModelLabel = 'Monitores';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Periféricos';
+
+    protected static ?int $navigationSort = 38;
 
     public static function form(Schema $schema): Schema
     {

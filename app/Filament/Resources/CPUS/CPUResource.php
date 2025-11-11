@@ -21,9 +21,15 @@ class CPUResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCpuChip;
 
-    protected static ?string $navigationLabel = 'CPU';
+    protected static ?string $navigationLabel = 'Procesador';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Componentes';
+    protected static ?string $modelLabel = 'Procesador';
+
+    protected static ?string $pluralModelLabel = 'Procesadores';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Hardware';
+
+    protected static ?int $navigationSort = 21;
 
     public static function form(Schema $schema): Schema
     {

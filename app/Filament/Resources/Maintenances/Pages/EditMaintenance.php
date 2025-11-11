@@ -16,7 +16,7 @@ class EditMaintenance extends EditRecord
     {
         return [
             DeleteAction::make()
-            ->label('Eliminar Registro'),
+                ->label('Eliminar'),
         ];
     }
 }

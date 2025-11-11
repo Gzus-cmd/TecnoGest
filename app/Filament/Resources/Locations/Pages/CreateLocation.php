@@ -7,7 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateLocation extends CreateRecord
 {
-    protected static string $resource = LocationResource::class;
+    protected static ?string $title = 'Registrar Ubicación';
 
-    protected static ?string $title = 'Formulario de Departamento';
+    protected static string $resource = LocationResource::class;
 }

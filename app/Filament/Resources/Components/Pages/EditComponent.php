@@ -16,7 +16,7 @@ class EditComponent extends EditRecord
     {
         return [
             DeleteAction::make()
-                ->label('Eliminar Registro'),
+                ->label('Eliminar'),
         ];
     }
 }

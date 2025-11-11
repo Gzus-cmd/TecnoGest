@@ -8,4 +8,6 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateAudioDevice extends CreateRecord
 {
     protected static string $resource = AudioDeviceResource::class;
+
+    protected static ?string $title = 'Registrar Modelo de Dispositivo de Audio';
 }

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('brand');
             $table->string('model');
-            $table->string('certification');
+            $table->string('certification')->nullable();
             $table->integer('watts');
             $table->timestamps();
         });

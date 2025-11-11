@@ -21,9 +21,15 @@ class ComputerResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedComputerDesktop;
 
-    protected static ?string $navigationLabel = 'Computadoras';
+    protected static ?string $navigationLabel = 'Computadora';
+
+    protected static ?string $modelLabel = 'Computadora';
+
+    protected static ?string $pluralModelLabel = 'Computadoras';
 
     protected static string | UnitEnum | null $navigationGroup = 'Dispositivos';
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

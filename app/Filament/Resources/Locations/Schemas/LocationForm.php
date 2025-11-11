@@ -13,20 +13,26 @@ class LocationForm
     {
         return $schema
             ->components([
-
                 Section::make('Información General')
-                ->schema
-                ([Grid::make(3)->schema
-                ([TextInput::make('name')
-                    ->label('Departamento')
-                    ->required(),
-                TextInput::make('pavilion')
-                    ->label('Pabellón')
-                    ->required(),
-                TextInput::make('apartment')
-                    ->label('Piso')
-                    ->numeric()
-                    ->required()])])
+                    ->description('Datos de ubicación del departamento')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Departamento')
+                                    ->required()
+                                    ->placeholder('Informática, Dirección'),
+                                TextInput::make('pavilion')
+                                    ->label('Pabellón')
+                                    ->required()
+                                    ->placeholder('A, B, C, D'),
+                                TextInput::make('apartment')
+                                    ->label('Piso')
+                                    ->numeric()
+                                    ->required()
+                                    ->placeholder('1, 2, 3, 4'),
+                            ]),
+                    ]),
             ]);
     }
 }

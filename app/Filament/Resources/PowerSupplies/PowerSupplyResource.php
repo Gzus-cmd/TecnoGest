@@ -13,12 +13,23 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class PowerSupplyResource extends Resource
 {
     protected static ?string $model = PowerSupply::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBolt;
+
+    protected static ?string $navigationLabel = 'Fuente de Poder';
+
+    protected static ?string $modelLabel = 'Fuente de Poder';
+
+    protected static ?string $pluralModelLabel = 'Fuentes de Poder';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Hardware';
+
+    protected static ?int $navigationSort = 26;
 
     public static function form(Schema $schema): Schema
     {

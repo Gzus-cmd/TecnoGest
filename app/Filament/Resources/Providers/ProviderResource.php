@@ -13,12 +13,23 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ProviderResource extends Resource
 {
     protected static ?string $model = Provider::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;
+
+    protected static ?string $navigationLabel = 'Proveedor';
+
+    protected static ?string $modelLabel = 'Proveedor';
+
+    protected static ?string $pluralModelLabel = 'Proveedores';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Administración';
+
+    protected static ?int $navigationSort = 82;
 
     public static function form(Schema $schema): Schema
     {

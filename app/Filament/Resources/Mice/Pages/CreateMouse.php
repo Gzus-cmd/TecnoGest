@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateMouse extends CreateRecord
 {
+    protected static ?string $title = 'Registrar Ratón';
+
     protected static string $resource = MouseResource::class;
 }

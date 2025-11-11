@@ -19,11 +19,17 @@ class GPUResource extends Resource
 {
     protected static ?string $model = GPU::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCpuChip;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::CpuChip;
 
-    protected static ?string $navigationLabel = 'GPU';
+    protected static ?string $navigationLabel = 'Tarjeta Gráfica';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Componentes';
+    protected static ?string $modelLabel = 'Tarjeta Gráfica';
+
+    protected static ?string $pluralModelLabel = 'Tarjetas Gráficas';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Hardware';
+
+    protected static ?int $navigationSort = 22;
 
     public static function form(Schema $schema): Schema
     {

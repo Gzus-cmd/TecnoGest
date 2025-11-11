@@ -13,12 +13,23 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class AudioDeviceResource extends Resource
 {
     protected static ?string $model = AudioDevice::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSpeakerWave;
+
+    protected static ?string $navigationLabel = 'Dispositivos de Audio';
+
+    protected static ?string $modelLabel = 'Dispositivo de Audio';
+
+    protected static ?string $pluralModelLabel = 'Dispositivos de Audio';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Periféricos';
+
+    protected static ?int $navigationSort = 41;
 
     public static function form(Schema $schema): Schema
     {

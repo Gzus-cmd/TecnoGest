@@ -7,7 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateUser extends CreateRecord
 {
-    protected static string $resource = UserResource::class;
+    protected static ?string $title = 'Registrar Usuario';
 
-    protected static ?string $title = 'Formulario de Usuario';
+    protected static string $resource = UserResource::class;
 }

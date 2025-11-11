@@ -25,6 +25,8 @@ class PrinterResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'Dispositivos';
 
+    protected static ?int $navigationSort = 2;
+
     public static function form(Schema $schema): Schema
     {
         return PrinterForm::configure($schema);

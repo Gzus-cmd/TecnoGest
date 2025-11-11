@@ -13,12 +13,23 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class RAMResource extends Resource
 {
     protected static ?string $model = RAM::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFilm;
+
+    protected static ?string $navigationLabel = 'Memoria RAM';
+
+    protected static ?string $modelLabel = 'Memoria RAM';
+
+    protected static ?string $pluralModelLabel = 'Memorias RAM';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Hardware';
+
+    protected static ?int $navigationSort = 23;
 
     public static function form(Schema $schema): Schema
     {

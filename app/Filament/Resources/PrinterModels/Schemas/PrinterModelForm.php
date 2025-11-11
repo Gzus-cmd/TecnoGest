@@ -14,44 +14,49 @@ class PrinterModelForm
     {
         return $schema
             ->components([
-
                 Section::make('Información del Modelo')
-                ->schema
-                ([
-                Grid::make(3)->schema
-                ([TextInput::make('brand')
-                    ->label('Marca')
-                    ->required(),
-                TextInput::make('model')
-                    ->label('Modelo')
-                    ->required(),
-                TextInput::make('type')
-                    ->label('Tipo')
-                    ->required(),
-            ])]),
+                    ->description('Datos básicos del modelo de impresora')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('brand')
+                                    ->label('Marca')
+                                    ->required()
+                                    ->placeholder('HP, Canon, Brother'),
+                                TextInput::make('model')
+                                    ->label('Modelo')
+                                    ->required()
+                                    ->placeholder('LaserJet Pro, imageCLASS, HL-L8360'),
+                                TextInput::make('type')
+                                    ->label('Tipo')
+                                    ->required()
+                                    ->placeholder('Laser, Inyección, Térmica'),
+                            ]),
+                    ]),
 
                 Section::make('Funcionalidades')
-                ->schema
-                ([Grid::make(4)
-                ->schema
-                ([Toggle::make('color')
-                    ->label('Color')
-                    ->inline(false)
-                    ->required(),
-                Toggle::make('scanner')
-                    ->label('Escáner')
-                    ->inline(false)
-                    ->required(),
-                Toggle::make('wifi')
-                    ->label('WIFI')
-                    ->inline(false)
-                    ->required(),
-                Toggle::make('ethernet')
-                    ->label('Ethernet')
-                    ->inline(false)
-                    ->required(),])
-])
-
+                    ->description('Características técnicas disponibles')
+                    ->schema([
+                        Grid::make(4)
+                            ->schema([
+                                Toggle::make('color')
+                                    ->label('Color')
+                                    ->inline(false)
+                                    ->required(),
+                                Toggle::make('scanner')
+                                    ->label('Escáner')
+                                    ->inline(false)
+                                    ->required(),
+                                Toggle::make('wifi')
+                                    ->label('WIFI')
+                                    ->inline(false)
+                                    ->required(),
+                                Toggle::make('ethernet')
+                                    ->label('Ethernet')
+                                    ->inline(false)
+                                    ->required(),
+                            ]),
+                    ]),
             ]);
     }
 }

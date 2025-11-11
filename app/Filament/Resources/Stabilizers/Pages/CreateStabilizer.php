@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateStabilizer extends CreateRecord
 {
+    protected static ?string $title = 'Registrar Estabilizador';
+
     protected static string $resource = StabilizerResource::class;
 }

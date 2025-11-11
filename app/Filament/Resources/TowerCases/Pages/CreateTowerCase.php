@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateTowerCase extends CreateRecord
 {
+    protected static ?string $title = 'Registrar Gabinete';
+
     protected static string $resource = TowerCaseResource::class;
 }

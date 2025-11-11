@@ -13,11 +13,14 @@ return new class extends Migration
     {
         Schema::create('maintenances', function (Blueprint $table) {
             $table->id();
-            $table->enum('type', ['Preventiva', 'Correctiva']);
+            $table->enum('type', ['Preventivo', 'Correctivo']);
             $table->morphs('deviceable');
             $table->foreignId('user_id')->constrained();
             $table->enum('status', ['Pendiente', 'En Progreso', 'Finalizado']);
             $table->text('description');
+            $table->boolean('requires_workshop')->default(false);
+            $table->string('device_previous_status')->nullable();
+            $table->unsignedBigInteger('workshop_transfer_id')->nullable();
             $table->timestamps();
         });
     }

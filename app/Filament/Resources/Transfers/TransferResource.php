@@ -21,9 +21,15 @@ class TransferResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
-    protected static ?string $navigationLabel = 'Traslados';
+    protected static ?string $navigationLabel = 'Traslado';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Gestión de Dispositivos';
+    protected static ?string $modelLabel = 'Traslado';
+
+    protected static ?string $pluralModelLabel = 'Traslados';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Registros';
+
+    protected static ?int $navigationSort = 73;
 
     public static function form(Schema $schema): Schema
     {

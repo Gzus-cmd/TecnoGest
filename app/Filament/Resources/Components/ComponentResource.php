@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ComponentResource extends Resource
 {
@@ -20,9 +21,17 @@ class ComponentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::PuzzlePiece;
 
-    protected static ?string $navigationLabel = 'Componentes';
+    protected static ?string $navigationLabel = 'Componentes y Repuestos';
 
-    protected static ?string $recordTitleAttribute = 'Componentes';
+    protected static ?string $modelLabel = 'Componente';
+
+    protected static ?string $pluralModelLabel = 'Componentes';
+
+    protected static ?string $recordTitleAttribute = 'serial';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Inventario';
+
+    protected static ?int $navigationSort = 11;
 
     public static function form(Schema $schema): Schema
     {

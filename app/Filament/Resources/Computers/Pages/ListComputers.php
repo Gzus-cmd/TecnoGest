@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Computers\Pages;
 
 use App\Filament\Resources\Computers\ComputerResource;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -16,7 +17,7 @@ class ListComputers extends ListRecords
     {
         return [
             CreateAction::make()
-            ->label('Registrar Computadora'),
+                ->label('Registrar Computadora'),
         ];
     }
 }

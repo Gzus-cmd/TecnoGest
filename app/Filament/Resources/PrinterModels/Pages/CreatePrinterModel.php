@@ -7,8 +7,8 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreatePrinterModel extends CreateRecord
 {
-    protected static string $resource = PrinterModelResource::class;
+    protected static ?string $title = 'Registrar Modelo de Impresora';
 
-    protected static ?string $title = 'Formulario de Modelos de Impresoras';
+    protected static string $resource = PrinterModelResource::class;
 
 }

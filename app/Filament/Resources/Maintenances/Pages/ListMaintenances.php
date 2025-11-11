@@ -16,7 +16,7 @@ class ListMaintenances extends ListRecords
     {
         return [
             CreateAction::make()
-            ->label('Registrar Mantenimiento'),
+                ->label('Registrar Mantenimiento'),
         ];
     }
 }

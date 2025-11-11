@@ -13,12 +13,23 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class NetworkAdapterResource extends Resource
 {
     protected static ?string $model = NetworkAdapter::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWifi;
+
+    protected static ?string $navigationLabel = 'Adaptador de Red';
+
+    protected static ?string $modelLabel = 'Adaptador de Red';
+
+    protected static ?string $pluralModelLabel = 'Adaptadores de Red';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Periféricos';
+
+    protected static ?int $navigationSort = 36;
 
     public static function form(Schema $schema): Schema
     {

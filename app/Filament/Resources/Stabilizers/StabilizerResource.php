@@ -13,12 +13,23 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class StabilizerResource extends Resource
 {
     protected static ?string $model = Stabilizer::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPower;
+
+    protected static ?string $navigationLabel = 'Estabilizador';
+
+    protected static ?string $modelLabel = 'Estabilizador';
+
+    protected static ?string $pluralModelLabel = 'Estabilizadores';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Periféricos';
+
+    protected static ?int $navigationSort = 43;
 
     public static function form(Schema $schema): Schema
     {

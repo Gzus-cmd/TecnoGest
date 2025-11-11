@@ -13,25 +13,30 @@ class OSForm
     {
         return $schema
             ->components([
+                Section::make('Información General')
+                    ->description('Datos básicos del sistema operativo')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Nombre')
+                                    ->required()
+                                    ->placeholder('Windows, Linux, macOS'),
+                                TextInput::make('version')
+                                    ->label('Versión')
+                                    ->required()
+                                    ->placeholder('11, 10, Ubuntu 22.04'),
+                            ]),
+                    ]),
 
-                Section::make('Información General')->schema
-                ([Grid::make(2)
-                ->schema([
-                TextInput::make('name')
-                    ->label('Nombre')
-                    ->required(),
-                TextInput::make('version')
-                    ->label('Versión')
-                    ->required(),
-
-                
-                    ]),]),
-
-                Section::make('Compatibilidad')->schema
-                    ([TextInput::make('architecture')
-                    ->label('Arquitectura')
-                    ->required(),])
-                
+                Section::make('Compatibilidad')
+                    ->description('Arquitectura del sistema operativo')
+                    ->schema([
+                        TextInput::make('architecture')
+                            ->label('Arquitectura')
+                            ->required()
+                            ->placeholder('32-bit, 64-bit, ARM'),
+                    ]),
             ]);
     }
 }

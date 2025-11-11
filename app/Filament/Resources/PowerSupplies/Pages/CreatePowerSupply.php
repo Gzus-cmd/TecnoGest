@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreatePowerSupply extends CreateRecord
 {
+    protected static ?string $title = 'Registrar Fuente de Poder';
+
     protected static string $resource = PowerSupplyResource::class;
 }

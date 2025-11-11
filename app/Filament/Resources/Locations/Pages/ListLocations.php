@@ -16,7 +16,7 @@ class ListLocations extends ListRecords
     {
         return [
             CreateAction::make()
-            ->label('Registrar Departamento'),
+                ->label('Registrar Ubicación'),
         ];
     }
 }

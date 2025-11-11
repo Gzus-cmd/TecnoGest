@@ -21,9 +21,15 @@ class OSResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleGroup;
 
-    protected static ?string $navigationLabel = 'Sistemas Operativos';
+    protected static ?string $navigationLabel = 'Sistema Operativo';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Componentes';
+    protected static ?string $modelLabel = 'Sistema Operativo';
+
+    protected static ?string $pluralModelLabel = 'Sistemas Operativos';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Software';
+
+    protected static ?int $navigationSort = 61;
 
     public static function form(Schema $schema): Schema
     {

@@ -21,9 +21,15 @@ class PrinterModelResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPrinter;
 
-    protected static ?string $navigationLabel = 'Modelos de Impresoras';
+    protected static ?string $navigationLabel = 'Modelo de Impresora';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Componentes';
+    protected static ?string $modelLabel = 'Modelo de Impresora';
+
+    protected static ?string $pluralModelLabel = 'Modelos de Impresoras';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Catálogo de Periféricos';
+
+    protected static ?int $navigationSort = 51;
 
     public static function form(Schema $schema): Schema
     {

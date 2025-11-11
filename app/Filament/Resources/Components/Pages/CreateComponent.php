@@ -7,7 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateComponent extends CreateRecord
 {
-    protected static ?string $title = 'Formulario de Componente';
+    protected static ?string $title = 'Registrar Componente';
 
     protected static string $resource = ComponentResource::class;
 }

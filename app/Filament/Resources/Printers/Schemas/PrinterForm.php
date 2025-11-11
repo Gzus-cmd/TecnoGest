@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Printers\Schemas;
 
+use App\Models\Component;
+use App\Models\Stabilizer;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -16,61 +18,99 @@ class PrinterForm
     {
         return $schema
             ->components([
-                
-                
-                Section::make()
-                ->schema([
-                Grid::make(2)
-                ->schema
-                ([
-                Select::make('modelo_id')
-                    ->relationship('printerModel','model')
-                    ->label('Modelo')
-                    ->required(),
-                TextInput::make('serial')
-                    ->required()
-                    ->label('Número de Serie')])
+                Section::make('Información de la Impresora')
+                    ->description('Datos básicos y modelo')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                Select::make('modelo_id')
+                                    ->relationship('modelo', 'model')
+                                    ->label('Modelo')
+                                    ->required(),
+                                TextInput::make('serial')
+                                    ->label('Número de Serie')
+                                    ->required()
+                                    ->unique(ignoreRecord: true),
+                            ]),
+                    ]),
 
-                    ,
-                Grid::make(2)
-                ->schema
-                    ([Select::make('location_id')
-                    ->label('Departamento')
-                    ->relationship('location', 'name')
-                    ->getOptionLabelFromRecordUsing(fn (Model $record) => "Pabellón: {$record->pavilion} | {$record->name}")
-                    ->required(),
-                    Select::make('status')
-                        ->label('Estado')
-                        ->options([
-                'Activo' => 'Activo',
-                'Inactivo' => 'Inactivo',
-                'En Mantenimiento' => 'En mantenimiento',
-                'Desmantelado' => 'Desmantelado',
-            ])
-                        ->required()])
-                        ])
-                        ,
-                Section::make()
-                ->schema([
-                
-                Grid::make(2)->schema
-                    ([TextInput::make('ip_address')
-                    ->label('Dirección IP'),
-                TextInput::make('warranty_months')
-                        ->numeric()
-                        ->label('Meses de Garantía')])
-                    ,
-                Grid::make(2)->schema
-                ([DatePicker::make('input_date')
-                    ->label('Fecha de Entrada')
-                    ->required(),
-                DatePicker::make('output_date')
-                    ->label('Fecha de Salida')])
-                
-                ]),
-                
+                Section::make('Ubicación y Estado')
+                    ->description('Departamento e estado de la impresora')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                Select::make('location_id')
+                                    ->label('Departamento')
+                                    ->relationship('location', 'name')
+                                    ->getOptionLabelFromRecordUsing(fn (Model $record) => "{$record->pavilion} | {$record->name}")
+                                    ->required(),
+                                Select::make('status')
+                                    ->label('Estado')
+                                    ->options([
+                                        'Activo' => 'Activo',
+                                        'Inactivo' => 'Inactivo',
+                                        'En Mantenimiento' => 'En mantenimiento',
+                                        'Desmantelado' => 'Desmantelado',
+                                    ])
+                                    ->required(),
+                            ]),
+                    ]),
 
+                Section::make('Conectividad y Garantía')
+                    ->description('Configuración de red e información de garantía')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('ip_address')
+                                    ->label('Dirección IP')
+                                    ->placeholder('192.168.1.100'),
+                                TextInput::make('warranty_months')
+                                    ->label('Meses de Garantía')
+                                    ->numeric()
+                                    ->placeholder('12, 24, 36'),
+                            ]),
+                    ]),
 
+                Section::make('Fechas Importantes')
+                    ->description('Registro de entrada y salida')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                DatePicker::make('input_date')
+                                    ->label('Fecha de Entrada')
+                                    ->required(),
+                                DatePicker::make('output_date')
+                                    ->label('Fecha de Salida'),
+                            ]),
+                    ]),
+
+                Section::make('Componentes Adicionales')
+                    ->description('Estabilizador y otros componentes')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                Select::make('stabilizer_component_id')
+                                    ->label('Estabilizador')
+                                    ->options(function ($livewire) {
+                                        $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
+                                            ? $livewire->getRecord() 
+                                            : null;
+                                        
+                                        $query = Component::where('componentable_type', 'App\Models\Stabilizer')
+                                            ->where('status', 'Operativo');
+                                        
+                                        // Los estabilizadores pueden estar asignados a múltiples dispositivos
+                                        // No aplicamos whereDoesntHave para permitir reutilización
+                                        
+                                        return $query->get()
+                                            ->mapWithKeys(function ($component) {
+                                                $stab = $component->componentable;
+                                                return [$component->id => "{$stab->brand} {$stab->model} - {$stab->capacity}VA - Serial: {$component->serial}"];
+                                            });
+                                    })
+                                    ->searchable(),
+                            ]),
+                    ]),
             ]);
     }
 }

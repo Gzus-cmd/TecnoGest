@@ -19,6 +19,6 @@ class PrinterModel extends Model
 
     public function printers() : HasMany
     {
-        return $this->hasMany(Component::class);
+        return $this->hasMany(Printer::class);
     }
 }

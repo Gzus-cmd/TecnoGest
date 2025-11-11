@@ -14,7 +14,7 @@ class EditUser extends EditRecord
     {
         return [
             DeleteAction::make()
-                ->label('Eliminar Usuario'),
+                ->label('Eliminar'),
         ];
     }
 }

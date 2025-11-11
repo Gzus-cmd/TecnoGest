@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('brand');
             $table->string('model');
-            $table->integer('memory');
+            $table->string('memory');
             $table->integer('capacity');
             $table->string('interface');
             $table->float('frequency');

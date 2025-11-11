@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProjectorModel extends Model
 {
@@ -14,4 +15,8 @@ class ProjectorModel extends Model
         'vga',
         'hdmi',
     ];
+
+    public function projectors() : HasMany {
+        return $this->hasMany(Projector::class);
+    }
 }

@@ -16,7 +16,7 @@ class ListTransfers extends ListRecords
     {
         return [
             CreateAction::make()
-            ->label('Registrar Traslado'),
+                ->label('Registrar Traslado'),
         ];
     }
 }

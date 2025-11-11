@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphToMany;
 class Printer extends Model
 {
     protected $fillable = [
-        'printerModel_id',
+        'modelo_id',
         'serial',
         'location_id',
         'ip_address',
@@ -25,14 +25,24 @@ class Printer extends Model
         return $this->belongsTo(Location::class);
     }
 
-    public function printerModel() : BelongsTo
+    public function modelo() : BelongsTo
     {
-        return $this->belongsTo(PrinterModel::class);
+        return $this->belongsTo(PrinterModel::class, 'modelo_id');
     }
 
     public function components() : MorphToMany
     {
-        return $this->morphToMany(Component::class, 'componentables');
+        return $this->morphToMany(Component::class, 'componentable', 'componentables')
+            ->withPivot(['status', 'assigned_at'])
+            ->withTimestamps()
+            ->wherePivot('status', 'Vigente');
+    }
+
+    public function allComponents() : MorphToMany
+    {
+        return $this->morphToMany(Component::class, 'componentable', 'componentables')
+            ->withPivot(['status', 'assigned_at'])
+            ->withTimestamps();
     }
 
     public function maintenances() : MorphMany

@@ -16,7 +16,7 @@ class ListOS extends ListRecords
     {
         return [
             CreateAction::make()
-            ->label('Registrar Sistema Operativo'),
+                ->label('Registrar Sistema Operativo'),
         ];
     }
 }

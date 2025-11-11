@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('components', function (Blueprint $table) {
             $table->id();
             $table->morphs('componentable');
-            $table->string('serial');
+            $table->string('serial')->unique();
             $table->date('input_date')->nullable();
             $table->date('output_date')->nullable();
             $table->enum('status', ['Operativo', 'Deficiente', 'Retirado']);

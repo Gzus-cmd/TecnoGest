@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Container\Attributes\Auth;
 use UnitEnum;
 
 class MaintenanceResource extends Resource
@@ -21,9 +22,17 @@ class MaintenanceResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
 
-    protected static ?string $navigationLabel = 'Mantenimientos';
+    protected static ?string $navigationLabel = 'Mantenimiento';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Gestión de Dispositivos';
+    protected static ?string $modelLabel = 'Mantenimiento';
+
+    protected static ?string $pluralModelLabel = 'Mantenimientos';
+
+    protected static string | UnitEnum | null $navigationGroup = 'Registros';
+
+    protected static ?int $navigationSort = 72;
+
+    
 
     public static function form(Schema $schema): Schema
     {

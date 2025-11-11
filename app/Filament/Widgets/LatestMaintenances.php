@@ -1,0 +1,77 @@
+<?php
+
+namespace App\Filament\Widgets;
+
+use App\Models\Maintenance;
+use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Filament\Widgets\TableWidget as BaseWidget;
+
+class LatestMaintenances extends BaseWidget
+{
+    protected static ?string $heading = 'Mantenimientos Recientes';
+    
+    protected static ?int $sort = 7;
+
+    protected int | string | array $columnSpan = 'full';
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(
+                Maintenance::query()
+                    ->latest()
+                    ->limit(10)
+            )
+            ->columns([
+                TextColumn::make('deviceable_type')
+                    ->label('Tipo')
+                    ->formatStateUsing(function ($state) {
+                        return match (true) {
+                            str_contains($state, 'Computer') => 'Computadora',
+                            str_contains($state, 'Printer') => 'Impresora',
+                            str_contains($state, 'Projector') => 'Proyector',
+                            default => $state,
+                        };
+                    })
+                    ->badge()
+                    ->color(fn ($state) => match (true) {
+                        str_contains($state, 'Computer') => 'primary',
+                        str_contains($state, 'Printer') => 'success',
+                        str_contains($state, 'Projector') => 'warning',
+                        default => 'gray',
+                    }),
+                
+                TextColumn::make('deviceable.serial')
+                    ->label('Serial')
+                    ->searchable(),
+                
+                TextColumn::make('type')
+                    ->label('Tipo de Mantenimiento')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Preventivo' => 'success',
+                        'Correctivo' => 'danger',
+                    }),
+                
+                TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Pendiente' => 'warning',
+                        'En Progreso' => 'primary',
+                        'Finalizado' => 'success',
+                    }),
+                
+                TextColumn::make('user.name')
+                    ->label('Técnico')
+                    ->searchable(),
+                
+                TextColumn::make('created_at')
+                    ->label('Fecha')
+                    ->date()
+                    ->sortable(),
+            ]);
+    }
+}

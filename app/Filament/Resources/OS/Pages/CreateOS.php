@@ -7,7 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateOS extends CreateRecord
 {
-    protected static ?string $title = 'Formulario de Sistema Operativo';
+    protected static ?string $title = 'Registrar Sistema Operativo';
 
     protected static string $resource = OSResource::class;
 

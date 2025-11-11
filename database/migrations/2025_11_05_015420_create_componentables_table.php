@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('component_id')->constrained()->onDelete('cascade');
             $table->morphs('componentable');
-            $table->date('assigned_at');
-            $table->date('removed_at')->nullable();
+            $table->dateTime('assigned_at'); // Cambiado de date a dateTime
+            $table->enum('status', ['Vigente', 'Removido', 'Desmantelado'])->default('Vigente');
             $table->timestamps();
         });
     }
