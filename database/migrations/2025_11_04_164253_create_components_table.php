@@ -20,6 +20,8 @@ return new class extends Migration
             $table->enum('status', ['Operativo', 'Deficiente', 'Retirado']);
             $table->integer('warranty_months')->nullable();
             $table->foreignId('provider_id')->constrained();
+            $table->foreignId('registered_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('retired_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
         });
     }

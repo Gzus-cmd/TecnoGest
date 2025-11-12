@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('locations', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->boolean('is_workshop')->default(false);
             $table->string('pavilion');
             $table->smallInteger('apartment')->unsigned();
             $table->timestamps();

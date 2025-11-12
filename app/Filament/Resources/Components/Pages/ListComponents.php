@@ -76,7 +76,7 @@ class ListComponents extends ListRecords
                 ),
 
             'projectors' => Tab::make('Proyectores')
-                ->icon(Heroicon::Tv)
+                ->icon(Heroicon::VideoCamera)
                 ->modifyQueryUsing(fn (Builder $query) => $query
                     ->where('componentable_type', \App\Models\SparePart::class)
                     ->whereExists(function ($q) {

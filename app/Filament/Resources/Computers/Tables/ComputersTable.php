@@ -19,6 +19,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
@@ -397,27 +398,15 @@ class ComputersTable
                     }),
 
                 Action::make('actualizarSistema')
-                    ->label('Actualizar')
-                    ->icon('heroicon-o-computer-desktop')
+                    ->label('Actualizar Hardware')
+                    ->icon('heroicon-o-cpu-chip')
                     ->color('info')
-                    ->modalHeading('Actualizar Sistema Operativo, Hardware e IP')
-                    ->modalDescription('Modifique solo los aspectos técnicos de la computadora')
+                    ->modalHeading('Actualizar Componentes de Hardware')
+                    ->modalDescription('Modifique los componentes técnicos de la computadora')
                     ->modalWidth('6xl')
                     ->modalSubmitActionLabel('Guardar Cambios')
                     ->modalCancelActionLabel('Cancelar')
                     ->form([
-                        
-                        Grid::make(2)->schema([
-                        Select::make('os_id')
-                            ->label('Sistema Operativo')
-                            ->options(OS::all()->pluck('name', 'id'))
-                            ->searchable()
-                            ->required(),
-
-                        TextInput::make('ip_address')
-                            ->label('Dirección IP')
-                            ->placeholder('192.168.1.100'),
-                        ]),
 
                         Grid::make(2)->schema([
                             Select::make('motherboard_component_id')
@@ -441,6 +430,7 @@ class ComputersTable
 
                                     return $available;
                                 })
+                                ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Motherboard')?->id)
                                 ->searchable()
                                 ->live(),
 
@@ -450,8 +440,13 @@ class ComputersTable
                                     $motherboardComponentId = $get('motherboard_component_id');
                                     $current = $record->components->firstWhere('componentable_type', 'App\Models\CPU');
 
+                                    // Si no hay placa base seleccionada, mostrar el actual
                                     if (!$motherboardComponentId) {
-                                        return $current ? [$current->id => "{$current->componentable->brand} {$current->componentable->model} (ACTUAL)"] : [];
+                                        if ($current) {
+                                            $cpu = $current->componentable;
+                                            return [$current->id => "{$cpu->brand} {$cpu->model} - Serial: {$current->serial} (ACTUAL)"];
+                                        }
+                                        return [];
                                     }
 
                                     $mbComponent = Component::find($motherboardComponentId);
@@ -481,6 +476,7 @@ class ComputersTable
 
                                     return $available;
                                 })
+                                ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\CPU')?->id)
                                 ->searchable(),
                         ]),
                         Select::make('gpu_component_id')
@@ -504,6 +500,7 @@ class ComputersTable
 
                                 return $available;
                             })
+                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\GPU')?->id)
                             ->searchable(),
 
                         Grid::make(2)->schema([
@@ -612,6 +609,7 @@ class ComputersTable
 
                                 return $available;
                             })
+                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply')?->id)
                             ->searchable(),
 
                         Select::make('tower_case_component_id')
@@ -635,6 +633,7 @@ class ComputersTable
 
                                 return $available;
                             })
+                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\TowerCase')?->id)
                             ->searchable(),
                         ]),
                         
@@ -697,6 +696,7 @@ class ComputersTable
                                         
                                         return $available;
                                     })
+                                    ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Keyboard')?->id)
                                     ->searchable(),
 
                                 Select::make('mouse_component_id')
@@ -720,6 +720,7 @@ class ComputersTable
 
                                         return $available;
                                     })
+                                    ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Mouse')?->id)
                                     ->searchable()]),
 
                                 Grid::make(2)->schema([
@@ -746,6 +747,7 @@ class ComputersTable
                                                 
                                                 return $available;
                                             })
+                                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice')?->id)
                                             ->searchable(),
 
 
@@ -770,6 +772,7 @@ class ComputersTable
             
                                             return $available;
                                         })
+                                        ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter')?->id)
                                         ->searchable()
                                         
                                     ]),
@@ -797,6 +800,7 @@ class ComputersTable
 
                                 return $available;
                             })
+                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer')?->id)
                             ->searchable(),
 
                         Select::make('splitter_component_id')
@@ -820,12 +824,11 @@ class ComputersTable
 
                                 return $available;
                             })
+                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Splitter')?->id)
                             ->searchable()]),
                     ])
                     ->fillForm(function ($record): array {
                         return [
-                            'os_id' => $record->os_id,
-                            'ip_address' => $record->ip_address,
                             'motherboard_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Motherboard')?->id,
                             'cpu_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\CPU')?->id,
                             'gpu_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\GPU')?->id,
@@ -852,13 +855,7 @@ class ComputersTable
                         ];
                     })
                     ->action(function ($record, array $data): void {
-                        // Actualizar OS e IP
-                        $record->update([
-                            'os_id' => $data['os_id'],
-                            'ip_address' => $data['ip_address'],
-                        ]);
-
-                        // Actualizar componentes de hardware
+                        // Actualizar solo componentes de hardware
                         $componentData = [
                             'motherboard' => $data['motherboard_component_id'] ?? null,
                             'cpu' => $data['cpu_component_id'] ?? null,
@@ -934,11 +931,18 @@ class ComputersTable
 
                         // Marcar SOLO los componentes que realmente fueron removidos
                         if (!empty($componentsToRemove)) {
-                            $record->components()->updateExistingPivot($componentsToRemove, ['status' => 'Removido']);
+                            $record->components()->updateExistingPivot($componentsToRemove, [
+                                'status' => 'Removido',
+                                'removed_by' => Auth::id(),
+                            ]);
                         }
 
                         // Asignar nuevos componentes o actualizar los que se mantienen
-                        $pivotData = ['assigned_at' => now(), 'status' => 'Vigente'];
+                        $pivotData = [
+                            'assigned_at' => now(),
+                            'status' => 'Vigente',
+                            'assigned_by' => Auth::id(),
+                        ];
 
                         // Componentes individuales
                         $singleComponents = [
@@ -1003,9 +1007,9 @@ class ComputersTable
                         }
 
                         Notification::make()
-                            ->title('Sistema actualizado')
+                            ->title('Hardware actualizado')
                             ->success()
-                            ->body('El sistema operativo, IP y todos los componentes de hardware han sido actualizados exitosamente.')
+                            ->body('Todos los componentes de hardware han sido actualizados exitosamente.')
                             ->send();
                     }),
 
@@ -1013,12 +1017,59 @@ class ComputersTable
                     ->label('Historial')
                     ->icon('heroicon-o-clock')
                     ->color('warning')
-                    ->url(fn ($record): string => route('filament.admin.resources.component-histories.index', [
-                        'filters' => [
-                            'device_id' => ['value' => 'Computer-' . $record->id],
-                        ],
-                    ]))
-                    ->openUrlInNewTab(),
+                    ->modalHeading('Historial de la Computadora')
+                    ->modalDescription(fn ($record) => "Seleccione el tipo de historial que desea consultar para {$record->serial}")
+                    ->modalIcon('heroicon-o-clock')
+                    ->modalWidth('md')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->extraModalFooterActions([
+                        Action::make('historialComponentes')
+                            ->label('Historial de Componentes')
+                            ->icon('heroicon-o-cpu-chip')
+                            ->color('info')
+                            ->url(fn ($record): string => route('filament.admin.resources.component-histories.index', [
+                                'filters' => [
+                                    'device_id' => ['value' => 'Computer-' . $record->id],
+                                ],
+                            ]))
+                            ->openUrlInNewTab(),
+                        
+                        Action::make('historialMantenimientos')
+                            ->label('Historial de Mantenimientos')
+                            ->icon('heroicon-o-wrench-screwdriver')
+                            ->color('warning')
+                            ->url(fn ($record): string => route('filament.admin.resources.maintenances.index', [
+                                'filters' => [
+                                    'deviceable_type' => ['value' => 'App\Models\Computer'],
+                                    'deviceable_id' => ['value' => $record->id],
+                                ],
+                            ]))
+                            ->openUrlInNewTab(),
+                        
+                        Action::make('historialTraslados')
+                            ->label('Historial de Traslados')
+                            ->icon('heroicon-o-arrow-path')
+                            ->color('success')
+                            ->url(fn ($record): string => route('filament.admin.resources.transfers.index', [
+                                'filters' => [
+                                    'deviceable_type' => ['value' => 'App\Models\Computer'],
+                                    'deviceable_id' => ['value' => $record->id],
+                                ]
+                                
+                                ,
+                            ]))
+                            ->openUrlInNewTab(),
+                        
+                        Action::make('generarReporte')
+                            ->label('Generar Reporte Completo')
+                            ->icon('heroicon-o-document-arrow-down')
+                            ->color('danger')
+                            ->url(fn ($record): string => route('devices.full-report', [
+                                'type' => 'computer',
+                                'id' => $record->id,
+                            ])),
+                    ]),
 
                 Action::make('desmantelar')
                     ->label('Desmantelar')

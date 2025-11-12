@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Computers\Schemas;
 use App\Models\Component;
 use App\Models\CPU;
 use App\Models\GPU;
+use App\Models\Location;
 use App\Models\Motherboard;
 use App\Models\RAM;
 use App\Models\ROM;
@@ -43,22 +44,35 @@ class ComputerForm
                             ->unique(ignoreRecord: true),
                         Grid::make(2)
                             ->schema([
-                                Select::make('location_id')
-                                    ->label('Departamento')
-                                    ->relationship('location', 'name')
-                                    ->getOptionLabelFromRecordUsing(fn (Model $record) => "{$record->pavilion} | {$record->name}")
-                                    ->searchable()
-                                    ->preload()
-                                    ->required(),
                                 Select::make('status')
                                     ->label('Estado')
                                     ->options([
                                         'Activo' => 'Activo',
                                         'Inactivo' => 'Inactivo',
-                                        'En Mantenimiento' => 'En mantenimiento',
-                                        'Desmantelado' => 'Desmantelado',
                                     ])
-                                    ->required(),
+                                    ->required()
+                                    ->reactive(),
+                                Select::make('location_id')
+                                    ->label('Departamento')
+                                    ->options(function (Get $get) {
+                                        $status = $get('status');
+                                        
+                                        $query = Location::query();
+                                        
+                                        // Si está Inactivo, solo mostrar talleres de informática
+                                        if ($status === 'Inactivo') {
+                                            $query->where('is_workshop', true);
+                                        }
+                                        
+                                        return $query->get()
+                                            ->mapWithKeys(fn ($location) => [$location->id => "{$location->pavilion} | {$location->name}"]);
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->helperText(fn (Get $get) => $get('status') === 'Inactivo' 
+                                        ? 'Dispositivos inactivos solo pueden ir a talleres de informática' 
+                                        : 'Puede seleccionar cualquier ubicación'),
                             ]),
                     ]),
 
@@ -73,12 +87,15 @@ class ComputerForm
                                 Select::make('os_id')
                                     ->label('Sistema Operativo')
                                     ->relationship('os', 'name')
+                                    ->getOptionLabelFromRecordUsing(fn (Model $record) => "{$record->name} {$record->version} ({$record->architecture})")
+                                    ->searchable(['name', 'version', 'architecture'])
+                                    ->preload()
                                     ->required(),
                             ]),
                     ]),
 
                 Section::make('Componentes Principales')
-                    ->description('Seleccione los componentes principales de la computadora')
+                    ->description('Seleccione los componentes principales de la computadora (Obligatorios: Placa Base, CPU, Fuente de Poder, Gabinete, RAM y ROM)')
                     ->collapsible()
                     ->schema([
                         Select::make('motherboard_component_id')
@@ -117,6 +134,7 @@ class ComputerForm
                                     });
                             })
                             ->searchable()
+                            ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, callable $set) {
                                 // Limpiar selecciones dependientes
@@ -177,6 +195,7 @@ class ComputerForm
                                     });
                             })
                             ->searchable()
+                            ->required()
                             ->disabled(fn (Get $get) => !$get('motherboard_component_id'))
                             ->helperText(fn (Get $get) => $get('motherboard_component_id') 
                                 ? 'Filtra CPUs compatibles con la placa base seleccionada' 
@@ -257,6 +276,7 @@ class ComputerForm
                                     ->distinct()
                                     ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
                             ])
+                            ->required()
                             ->minItems(1)
                             ->maxItems(function (Get $get) {
                                 $motherboardComponentId = $get('motherboard_component_id');
@@ -313,6 +333,7 @@ class ComputerForm
                                     ->distinct()
                                     ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
                             ])
+                            ->required()
                             ->minItems(1)
                             ->maxItems(function (Get $get) {
                                 $motherboardComponentId = $get('motherboard_component_id');
@@ -364,7 +385,8 @@ class ComputerForm
                                         return [$component->id => "{$ps->brand} {$ps->model} - {$ps->power}W - Serial: {$component->serial}"];
                                     });
                             })
-                            ->searchable(),
+                            ->searchable()
+                            ->required(),
 
                         Select::make('tower_case_component_id')
                             ->label('Gabinete')
@@ -399,10 +421,11 @@ class ComputerForm
                                         return [$component->id => "{$tc->brand} {$tc->model} - Serial: {$component->serial}"];
                                     });
                             })
-                            ->searchable(),
+                            ->searchable()
+                            ->required(),
 
                         Select::make('network_adapter_component_id')
-                            ->label('Adaptador de Red')
+                            ->label('Adaptador de Red - Opcional')
                             ->options(function ($livewire) {
                                 $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
                                     ? $livewire->getRecord() 
@@ -438,10 +461,31 @@ class ComputerForm
                     ]),
 
                 Section::make('Periféricos')
-                    ->description('Seleccione los periféricos de la computadora')
+                    ->description('Periféricos asociados a la computadora')
                     ->collapsible()
                     ->collapsed()
                     ->schema([
+                        Select::make('stabilizer_component_id')
+                            ->label('Estabilizador')
+                            ->options(function ($livewire) {
+                                $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
+                                    ? $livewire->getRecord() 
+                                    : null;
+                                
+                                $query = Component::where('componentable_type', 'App\Models\Stabilizer')
+                                    ->where('status', 'Operativo');
+                                
+                                // Los estabilizadores pueden estar asignados a múltiples dispositivos
+                                // No aplicamos whereDoesntHave para permitir reutilización
+                                
+                                return $query->get()
+                                    ->mapWithKeys(function ($component) {
+                                        $stab = $component->componentable;
+                                        return [$component->id => "{$stab->brand} {$stab->model} - {$stab->capacity}VA - Serial: {$component->serial}"];
+                                    });
+                            })
+                            ->searchable(),
+
                         Repeater::make('monitors')
                             ->label('Monitores')
                             ->schema([
@@ -488,7 +532,7 @@ class ComputerForm
                             ->collapsible(),
 
                         Select::make('keyboard_component_id')
-                            ->label('Teclado')
+                            ->label('Teclado - Opcional')
                             ->options(function ($livewire) {
                                 $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
                                     ? $livewire->getRecord() 
@@ -523,7 +567,7 @@ class ComputerForm
                             ->searchable(),
 
                         Select::make('mouse_component_id')
-                            ->label('Ratón')
+                            ->label('Ratón - Opcional')
                             ->options(function ($livewire) {
                                 $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
                                     ? $livewire->getRecord() 
@@ -558,7 +602,7 @@ class ComputerForm
                             ->searchable(),
 
                         Select::make('audio_device_component_id')
-                            ->label('Dispositivo de Audio')
+                            ->label('Dispositivo de Audio - Opcional')
                             ->options(function ($livewire) {
                                 $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
                                     ? $livewire->getRecord() 
@@ -592,29 +636,8 @@ class ComputerForm
                             })
                             ->searchable(),
 
-                        Select::make('stabilizer_component_id')
-                            ->label('Estabilizador')
-                            ->options(function ($livewire) {
-                                $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
-                                    ? $livewire->getRecord() 
-                                    : null;
-                                
-                                $query = Component::where('componentable_type', 'App\Models\Stabilizer')
-                                    ->where('status', 'Operativo');
-                                
-                                // Los estabilizadores pueden estar asignados a múltiples dispositivos
-                                // No aplicamos whereDoesntHave para permitir reutilización
-                                
-                                return $query->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $stab = $component->componentable;
-                                        return [$component->id => "{$stab->brand} {$stab->model} - {$stab->capacity}VA - Serial: {$component->serial}"];
-                                    });
-                            })
-                            ->searchable(),
-
                         Select::make('splitter_component_id')
-                            ->label('Splitter')
+                            ->label('Splitter - Opcional')
                             ->options(function ($livewire) {
                                 $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
                                     ? $livewire->getRecord() 

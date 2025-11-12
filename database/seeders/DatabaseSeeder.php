@@ -68,6 +68,9 @@ class DatabaseSeeder extends Seeder
             // Periféricos
             PeripheralsSeeder::class,
             
+            // Sistemas Operativos
+            OSSeeder::class,
+            
             // Modelos de dispositivos
             PrinterModelSeeder::class,
             ProjectorModelSeeder::class,

@@ -36,7 +36,7 @@ return new class extends Migration
                 'Cabezal de Impresión',
                 'Rodillo',
                 'Fusor',
-                'Lámpara',
+                'Lámpara de Proyector',
                 'Lente',
                 'Filtro de Aire',
                 'Ventilador',

@@ -11,6 +11,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
@@ -276,7 +277,36 @@ class ComponentHistoryResource extends Resource
                     }),
             ], layout: \Filament\Tables\Enums\FiltersLayout::AboveContent)
             ->defaultSort('assigned_at', 'desc')
-            ->recordActions([]);
+            ->recordActions([])
+            ->toolbarActions([
+                \Filament\Actions\Action::make('exportExcel')
+                    ->label('Exportar Excel')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->action(function ($livewire) {
+                        $records = $livewire->getFilteredTableQuery()->get();
+                        $filename = 'historial_componentes_' . now()->format('Y-m-d_His') . '.xlsx';
+                        return \Maatwebsite\Excel\Facades\Excel::download(
+                            new \App\Exports\ComponentHistoryExport($records),
+                            $filename,
+                            \Maatwebsite\Excel\Excel::XLSX
+                        );
+                    }),
+                
+                \Filament\Actions\Action::make('exportCsv')
+                    ->label('Exportar CSV')
+                    ->icon('heroicon-o-document-text')
+                    ->color('info')
+                    ->action(function ($livewire) {
+                        $records = $livewire->getFilteredTableQuery()->get();
+                        $filename = 'historial_componentes_' . now()->format('Y-m-d_His') . '.csv';
+                        return \Maatwebsite\Excel\Facades\Excel::download(
+                            new \App\Exports\ComponentHistoryExport($records),
+                            $filename,
+                            \Maatwebsite\Excel\Excel::CSV
+                        );
+                    }),
+            ]);
     }
 
     public static function getPages(): array

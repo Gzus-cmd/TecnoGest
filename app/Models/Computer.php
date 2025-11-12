@@ -20,12 +20,8 @@ class Computer extends Model
 
     protected static function booted(): void
     {
-        // Cuando se desmantela una computadora, marcar todos sus componentes como desmantelados
-        static::updated(function (Computer $computer) {
-            if ($computer->wasChanged('status') && $computer->status === 'Desmantelado') {
-                $computer->dismantleAllComponents();
-            }
-        });
+        // El desmantelamiento ahora se maneja manualmente si es necesario
+        // Los estados disponibles son solo: Activo e Inactivo
     }
 
     /**

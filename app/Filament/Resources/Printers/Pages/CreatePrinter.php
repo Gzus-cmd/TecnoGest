@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Printers\Pages;
 use App\Filament\Resources\Printers\PrinterResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class CreatePrinter extends CreateRecord
 {
@@ -27,7 +28,8 @@ class CreatePrinter extends CreateRecord
         if ($stabilizerComponentId) {
             $printer->components()->attach($stabilizerComponentId, [
                 'assigned_at' => now(),
-                'status' => 'Vigente'
+                'status' => 'Vigente',
+                'assigned_by' => Auth::id(),
             ]);
         }
 

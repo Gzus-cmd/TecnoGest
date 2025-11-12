@@ -67,20 +67,6 @@ class SparePartsTable
                 SelectFilter::make('type')
                     ->label('Tipo de Repuesto')
                     ->options([
-                        'Placa Base' => 'Placa Base',
-                        'Procesador' => 'Procesador',
-                        'Tarjeta Gráfica' => 'Tarjeta Gráfica',
-                        'Memoria RAM' => 'Memoria RAM',
-                        'Almacenamiento' => 'Almacenamiento',
-                        'Monitor' => 'Monitor',
-                        'Teclado' => 'Teclado',
-                        'Mouse' => 'Mouse',
-                        'Adaptador de Red' => 'Adaptador de Red',
-                        'Fuente de Poder' => 'Fuente de Poder',
-                        'Gabinete' => 'Gabinete',
-                        'Dispositivo de Audio' => 'Dispositivo de Audio',
-                        'Estabilizador' => 'Estabilizador',
-                        'Splitter' => 'Splitter',
                         'Cabezal de Impresión' => 'Cabezal de Impresión',
                         'Rodillo' => 'Rodillo',
                         'Fusor' => 'Fusor',

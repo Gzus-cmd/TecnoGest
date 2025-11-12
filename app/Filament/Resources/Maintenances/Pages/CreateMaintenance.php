@@ -14,7 +14,7 @@ class CreateMaintenance extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['user_id'] = Auth::user()->id;
+        $data['registered_by'] = Auth::user()->id;
 
         return $data;
     }

@@ -23,9 +23,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Ignorar Blueprint
-/.blueprint
-/draft.yaml
-
-# Ignorar entornos de contenedores
-compose.yaml
+# Laravel Sail - NO ignorar compose.yaml (necesario para desarrollo)
+# compose.yaml ya está en el repositorio

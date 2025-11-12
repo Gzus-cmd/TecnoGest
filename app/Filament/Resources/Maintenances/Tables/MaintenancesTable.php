@@ -54,11 +54,17 @@ class MaintenancesTable
                         'En Progreso' => 'primary',
                         'Finalizado' => 'success',
                     }),
-                TextColumn::make('user.name')
-                    ->label('Técnico')
-                    ->searchable(),
+                TextColumn::make('registeredBy.name')
+                    ->label('Registrado por')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('updatedBy.name')
+                    ->label('Actualizado por')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('Sin cambios'),
                 TextColumn::make('created_at')
-                    ->label('Registrado')
+                    ->label('Fecha Registro')
                     ->date()
                     ->sortable(),
                 TextColumn::make('updated_at')
@@ -91,6 +97,26 @@ class MaintenancesTable
                     ])
                     ->multiple()
                     ->label('Tipo de Dispositivo'),
+                
+                Filter::make('deviceable_id')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('value')
+                            ->label('ID del Dispositivo')
+                            ->placeholder('Ingrese el ID')
+                            ->numeric(),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'],
+                            fn (Builder $query, $value): Builder => $query->where('deviceable_id', $value)
+                        );
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        if (!$data['value']) {
+                            return null;
+                        }
+                        return 'Dispositivo ID: ' . $data['value'];
+                    }),
                     
                 Filter::make('created_at')
                     ->form([
@@ -128,15 +154,24 @@ class MaintenancesTable
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Ejecutar Mantenimiento')
-                    ->modalDescription('¿Está seguro de que desea marcar este mantenimiento como "En Progreso"?')
+                    ->modalDescription(fn ($record) => $record->requires_workshop 
+                        ? '¿Está seguro de que desea ejecutar este mantenimiento? El dispositivo será trasladado automáticamente al Taller de Informática.'
+                        : '¿Está seguro de que desea marcar este mantenimiento como "En Progreso"?'
+                    )
                     ->modalSubmitActionLabel('Sí, ejecutar')
                     ->action(function ($record) {
-                        $record->update(['status' => 'En Progreso']);
+                        // Simplemente actualizamos el status, el observer se encargará del resto
+                        $record->status = 'En Progreso';
+                        $record->save();
+                        
+                        $message = $record->requires_workshop 
+                            ? 'El mantenimiento ha sido iniciado y el dispositivo ha sido trasladado al Taller de Informática.'
+                            : 'El mantenimiento ha sido marcado como "En Progreso".';
                         
                         Notification::make()
                             ->title('Mantenimiento iniciado')
                             ->success()
-                            ->body('El mantenimiento ha sido marcado como "En Progreso".')
+                            ->body($message)
                             ->send();
                     })
                     ->visible(fn ($record) => $record->status === 'Pendiente'),
@@ -150,7 +185,8 @@ class MaintenancesTable
                     ->modalDescription('¿Está seguro de que desea finalizar este mantenimiento?')
                     ->modalSubmitActionLabel('Sí, finalizar')
                     ->action(function ($record) {
-                        $record->update(['status' => 'Finalizado']);
+                        $record->status = 'Finalizado';
+                        $record->save();
                         
                         Notification::make()
                             ->title('Mantenimiento finalizado')

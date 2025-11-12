@@ -15,12 +15,13 @@ return new class extends Migration
             $table->id();
             $table->enum('type', ['Preventivo', 'Correctivo']);
             $table->morphs('deviceable');
-            $table->foreignId('user_id')->constrained();
+            $table->foreignId('registered_by')->constrained('users');
             $table->enum('status', ['Pendiente', 'En Progreso', 'Finalizado']);
             $table->text('description');
             $table->boolean('requires_workshop')->default(false);
             $table->string('device_previous_status')->nullable();
             $table->unsignedBigInteger('workshop_transfer_id')->nullable();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
         });
     }

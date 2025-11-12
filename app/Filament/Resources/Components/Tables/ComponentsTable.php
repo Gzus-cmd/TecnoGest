@@ -7,6 +7,9 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Actions\ExportAction;
+use Filament\Tables\Actions\ExportAction as TablesExportAction;
+use Filament\Tables\Actions\ExportBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
@@ -74,6 +77,11 @@ class ComponentsTable
                 TextColumn::make('current_assignment')
                     ->label('Asignado a')
                     ->getStateUsing(function ($record) {
+                        // Si el componente está retirado, no mostrar asignación
+                        if ($record->status === 'Retirado') {
+                            return null;
+                        }
+                        
                         // Buscar asignación vigente
                         $computer = $record->computers->first();
                         if ($computer) {
@@ -93,7 +101,8 @@ class ComponentsTable
                         return 'Disponible';
                     })
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'Disponible' ? 'success' : 'info')
+                    ->color(fn (?string $state): string => $state === 'Disponible' ? 'success' : ($state === null ? 'gray' : 'info'))
+                    ->placeholder('—')
                     ->searchable(false),
                 TextColumn::make('provider.name')
                     ->label('Proveedor')
@@ -165,6 +174,44 @@ class ComponentsTable
                     ->label('Eliminar'),
             ])
             ->toolbarActions([
+                \Filament\Actions\Action::make('exportExcel')
+                    ->label('Exportar Excel')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->action(function ($livewire) {
+                        // Obtener registros filtrados
+                        $records = $livewire->getFilteredTableQuery()->get();
+                        
+                        // Generar nombre de archivo
+                        $filename = 'componentes_' . now()->format('Y-m-d_His') . '.xlsx';
+                        
+                        // Exportar
+                        return \Maatwebsite\Excel\Facades\Excel::download(
+                            new \App\Exports\ComponentsExport($records),
+                            $filename,
+                            \Maatwebsite\Excel\Excel::XLSX
+                        );
+                    }),
+                
+                \Filament\Actions\Action::make('exportCsv')
+                    ->label('Exportar CSV')
+                    ->icon('heroicon-o-document-text')
+                    ->color('info')
+                    ->action(function ($livewire) {
+                        // Obtener registros filtrados
+                        $records = $livewire->getFilteredTableQuery()->get();
+                        
+                        // Generar nombre de archivo
+                        $filename = 'componentes_' . now()->format('Y-m-d_His') . '.csv';
+                        
+                        // Exportar
+                        return \Maatwebsite\Excel\Facades\Excel::download(
+                            new \App\Exports\ComponentsExport($records),
+                            $filename,
+                            \Maatwebsite\Excel\Excel::CSV
+                        );
+                    }),
+                
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->label('Eliminar'),

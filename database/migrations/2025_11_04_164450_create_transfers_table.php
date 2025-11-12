@@ -14,12 +14,22 @@ return new class extends Migration
         Schema::create('transfers', function (Blueprint $table) {
             $table->id();
             $table->morphs('deviceable');
-            $table->foreignId('user_id')->constrained();
+            $table->foreignId('registered_by')->constrained('users');
             $table->foreignId('origin_id')->constrained('locations');
             $table->foreignId('destiny_id')->constrained('locations');
             $table->date('date');
             $table->text('reason');
+            $table->string('status')->default('Pendiente');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
+        });
+
+        // Agregar foreign key de maintenances a transfers ahora que transfers existe
+        Schema::table('maintenances', function (Blueprint $table) {
+            $table->foreign('workshop_transfer_id')
+                ->references('id')
+                ->on('transfers')
+                ->onDelete('set null');
         });
     }
 
@@ -28,6 +38,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Eliminar foreign key antes de eliminar la tabla
+        Schema::table('maintenances', function (Blueprint $table) {
+            $table->dropForeign(['workshop_transfer_id']);
+        });
+        
         Schema::dropIfExists('transfers');
     }
 };

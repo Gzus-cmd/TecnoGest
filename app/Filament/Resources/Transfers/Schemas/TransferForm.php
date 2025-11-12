@@ -28,22 +28,16 @@ class TransferForm
                                 MorphToSelect::make('deviceable')
                             ->types([
                                 MorphToSelect\Type::make(Computer::class)
+                                    ->titleAttribute('serial')
                                     ->label('Computadora')
-                                    ->modifyOptionsQueryUsing(fn ($query) => $query
-                                        ->whereNotIn('status', ['Desmantelado', 'En Mantenimiento'])
-                                    )
                                     ->getOptionLabelFromRecordUsing(fn (Computer $record): string => "{$record->location->pavilion} - {$record->location->name} | {$record->serial}"),
                                 MorphToSelect\Type::make(Printer::class)
+                                    ->titleAttribute('serial')
                                     ->label('Impresora')
-                                    ->modifyOptionsQueryUsing(fn ($query) => $query
-                                        ->whereNotIn('status', ['Desmantelado', 'En Mantenimiento'])
-                                    )
                                     ->getOptionLabelFromRecordUsing(fn (Printer $record): string => "{$record->location->pavilion} - {$record->location->name} | {$record->serial}"),
                                 MorphToSelect\Type::make(Projector::class)
+                                    ->titleAttribute('serial')
                                     ->label('Proyector')
-                                    ->modifyOptionsQueryUsing(fn ($query) => $query
-                                        ->whereNotIn('status', ['Desmantelado', 'En Mantenimiento'])
-                                    )
                                     ->getOptionLabelFromRecordUsing(fn (Projector $record): string => "{$record->location->pavilion} - {$record->location->name} | {$record->serial}"),
                             ])
                             ->label('Seleccionar Dispositivo')
@@ -52,11 +46,20 @@ class TransferForm
                             ]),
                     ]),
 
-                Section::make('Ubicaciones y Responsable')
-                    ->description('Origen, destino y responsable del traslado')
+                Section::make('Ubicaciones y Estado')
+                    ->description('Origen, destino y estado del traslado')
                     ->schema([
-                        Grid::make(1)
+                        Grid::make(2)
                             ->schema([
+                                Select::make('status')
+                                    ->label('Estado')
+                                    ->options([
+                                        'Pendiente' => 'Pendiente',
+                                        'En Progreso' => 'En Progreso',
+                                        'Finalizado' => 'Finalizado',
+                                    ])
+                                    ->default('Pendiente')
+                                    ->required(),
                                 
                                 Select::make('destiny_id')
                                     ->label('Ubicación Destino')

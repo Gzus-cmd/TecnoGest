@@ -53,6 +53,7 @@ class LocationSeeder extends Seeder
             ['pavilion' => 'E', 'apartment' => 504, 'name' => 'Almacén de Equipos'],
             ['pavilion' => 'E', 'apartment' => 505, 'name' => 'Taller de Reparaciones'],
             ['pavilion' => 'E', 'apartment' => 506, 'name' => 'Cuarto de Telecomunicaciones'],
+            ['pavilion' => 'E', 'apartment' => 507, 'name' => 'Sala de Informática'], // Para traslados de mantenimiento
 
             // Pabellón F - Otros
             ['pavilion' => 'F', 'apartment' => 601, 'name' => 'Auditorio'],

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Computers\Pages;
 use App\Filament\Resources\Computers\ComputerResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class CreateComputer extends CreateRecord
 {
@@ -52,7 +53,11 @@ class CreateComputer extends CreateRecord
 
     protected function attachComponents(Model $computer, array $componentData): void
     {
-        $pivotData = ['assigned_at' => now(), 'status' => 'Vigente'];
+        $pivotData = [
+            'assigned_at' => now(),
+            'status' => 'Vigente',
+            'assigned_by' => Auth::id(),
+        ];
 
         // Componentes individuales
         $singleComponents = [

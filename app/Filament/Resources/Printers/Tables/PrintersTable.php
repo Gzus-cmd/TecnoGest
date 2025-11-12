@@ -19,6 +19,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PrintersTable
@@ -254,11 +255,18 @@ class PrintersTable
 
                         // Marcar como removidos
                         if (!empty($componentsToRemove)) {
-                            $record->components()->updateExistingPivot($componentsToRemove, ['status' => 'Removido']);
+                            $record->components()->updateExistingPivot($componentsToRemove, [
+                                'status' => 'Removido',
+                                'removed_by' => Auth::id(),
+                            ]);
                         }
 
                         // Asignar o actualizar repuestos
-                        $pivotData = ['assigned_at' => now(), 'status' => 'Vigente'];
+                        $pivotData = [
+                            'assigned_at' => now(),
+                            'status' => 'Vigente',
+                            'assigned_by' => Auth::id(),
+                        ];
 
                         foreach ($newSparePartIds as $componentId) {
                             if ($componentId) {
@@ -282,12 +290,57 @@ class PrintersTable
                     ->label('Historial')
                     ->icon('heroicon-o-clock')
                     ->color('warning')
-                    ->url(fn ($record): string => route('filament.admin.resources.component-histories.index', [
-                        'filters' => [
-                            'device_id' => ['value' => 'Printer-' . $record->id],
-                        ],
-                    ]))
-                    ->openUrlInNewTab(),
+                    ->modalHeading('Historial de la Impresora')
+                    ->modalDescription(fn ($record) => "Seleccione el tipo de historial que desea consultar para {$record->serial}")
+                    ->modalIcon('heroicon-o-clock')
+                    ->modalWidth('md')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->extraModalFooterActions([
+                        Action::make('historialComponentes')
+                            ->label('Historial de Componentes')
+                            ->icon('heroicon-o-cpu-chip')
+                            ->color('info')
+                            ->url(fn ($record): string => route('filament.admin.resources.component-histories.index', [
+                                'filters' => [
+                                    'device_id' => ['value' => 'Printer-' . $record->id],
+                                ],
+                            ]))
+                            ->openUrlInNewTab(),
+                        
+                        Action::make('historialMantenimientos')
+                            ->label('Historial de Mantenimientos')
+                            ->icon('heroicon-o-wrench-screwdriver')
+                            ->color('warning')
+                            ->url(fn ($record): string => route('filament.admin.resources.maintenances.index', [
+                                'filters' => [
+                                    'deviceable_type' => ['value' => 'App\Models\Printer'],
+                                    'deviceable_id' => ['value' => $record->id],
+                                ],
+                            ]))
+                            ->openUrlInNewTab(),
+                        
+                        Action::make('historialTraslados')
+                            ->label('Historial de Traslados')
+                            ->icon('heroicon-o-arrow-path')
+                            ->color('success')
+                            ->url(fn ($record): string => route('filament.admin.resources.transfers.index', [
+                                'filters' => [
+                                    'deviceable_type' => ['value' => 'App\Models\Printer'],
+                                    'deviceable_id' => ['value' => $record->id],
+                                ]
+                            ]))
+                            ->openUrlInNewTab(),
+                        
+                        Action::make('generarReporte')
+                            ->label('Generar Reporte Completo')
+                            ->icon('heroicon-o-document-arrow-down')
+                            ->color('danger')
+                            ->url(fn ($record): string => route('devices.full-report', [
+                                'type' => 'printer',
+                                'id' => $record->id,
+                            ])),
+                    ]),
 
                 Action::make('desmantelar')
                     ->label('Desmantelar')

@@ -6,6 +6,7 @@ use App\Filament\Resources\Projectors\Pages\CreateProjector;
 use App\Filament\Resources\Projectors\Pages\EditProjector;
 use App\Filament\Resources\Projectors\Pages\ListProjectors;
 use App\Filament\Resources\Projectors\Schemas\ProjectorForm;
+use App\Filament\Resources\Projectors\Schemas\ProjectorFormSimple;
 use App\Filament\Resources\Projectors\Tables\ProjectorsTable;
 use App\Models\Projector;
 use BackedEnum;
@@ -33,6 +34,11 @@ class ProjectorResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
+        // Usar formulario completo para crear, simplificado para editar
+        $page = request()->route()?->getActionMethod();
+        if ($page === 'edit') {
+            return ProjectorFormSimple::configure($schema);
+        }
         return ProjectorForm::configure($schema);
     }
 

@@ -3,12 +3,14 @@
 namespace App\Filament\Resources\Projectors\Schemas;
 
 use App\Models\Component;
+use App\Models\Location;
 use App\Models\Stabilizer;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 
@@ -39,21 +41,36 @@ class ProjectorForm
                     ->schema([
                         Grid::make(2)
                             ->schema([
-                                Select::make('location_id')
-                                    ->label('Departamento')
-                                    ->relationship('location', 'name')
-                                    ->getOptionLabelFromRecordUsing(fn (Model $record) => "{$record->pavilion} | {$record->name}")
-                                    ->required(),
                                 Select::make('status')
                                     ->label('Estado')
                                     ->options([
                                         'Activo' => 'Activo',
                                         'Inactivo' => 'Inactivo',
-                                        'En Mantenimiento' => 'En mantenimiento',
-                                        'Desmantelado' => 'Desmantelado',
                                     ])
                                     ->default('Activo')
-                                    ->required(),
+                                    ->required()
+                                    ->reactive(),
+                                Select::make('location_id')
+                                    ->label('Departamento')
+                                    ->options(function (Get $get) {
+                                        $status = $get('status');
+                                        
+                                        $query = Location::query();
+                                        
+                                        // Si está Inactivo, solo mostrar talleres de informática
+                                        if ($status === 'Inactivo') {
+                                            $query->where('is_workshop', true);
+                                        }
+                                        
+                                        return $query->get()
+                                            ->mapWithKeys(fn ($location) => [$location->id => "{$location->pavilion} | {$location->name}"]);
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->helperText(fn (Get $get) => $get('status') === 'Inactivo' 
+                                        ? 'Dispositivos inactivos solo pueden ir a talleres de informática' 
+                                        : 'Puede seleccionar cualquier ubicación'),
                             ]),
                     ]),
 

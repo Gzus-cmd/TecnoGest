@@ -17,6 +17,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class TransfersTable
 {
@@ -31,7 +32,7 @@ class TransfersTable
                             return 'Computadora';
                         } elseif (str_contains($state, 'Printer')) {
                             return 'Impresora';
-                        } elseif (str_contains($state, 'Projector')) {
+                        } elseif (str_contains($state, 'Proyector')) {
                             return 'Proyector';
                         }
                         return $state;
@@ -49,31 +50,33 @@ class TransfersTable
                 TextColumn::make('destiny.name')
                     ->label('Destino')
                     ->searchable(),
-                IconColumn::make('completado')
+                TextColumn::make('status')
                     ->label('Estado')
-                    ->boolean()
-                    ->getStateUsing(function ($record) {
-                        $device = $record->deviceable;
-                        return $device && $device->location_id === $record->destiny_id;
-                    })
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->tooltip(fn ($record) => $record->deviceable && $record->deviceable->location_id === $record->destiny_id 
-                        ? 'Dispositivo en ubicación destino' 
-                        : 'Dispositivo NO está en ubicación destino'),
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Pendiente' => 'gray',
+                        'En Progreso' => 'warning',
+                        'Finalizado' => 'success',
+                    }),
                 TextColumn::make('date')
                     ->label('Fecha')
                     ->date()
                     ->sortable(),
+                TextColumn::make('registeredBy.name')
+                    ->label('Registrado Por')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updatedBy.name')
+                    ->label('Actualizado Por')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                    ->label('Registro')
+                    ->label('Fecha Registro')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
-                    ->label('Actualización')
+                    ->label('Fecha Actualización')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -87,6 +90,35 @@ class TransfersTable
                     ])
                     ->multiple()
                     ->label('Tipo de Dispositivo'),
+                
+                SelectFilter::make('status')
+                    ->options([
+                        'Pendiente' => 'Pendiente',
+                        'En Progreso' => 'En Progreso',
+                        'Finalizado' => 'Finalizado',
+                    ])
+                    ->multiple()
+                    ->label('Estado'),
+                
+                Filter::make('deviceable_id')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('value')
+                            ->label('ID del Dispositivo')
+                            ->placeholder('Ingrese el ID')
+                            ->numeric(),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'],
+                            fn (Builder $query, $value): Builder => $query->where('deviceable_id', $value)
+                        );
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        if (!$data['value']) {
+                            return null;
+                        }
+                        return 'Dispositivo ID: ' . $data['value'];
+                    }),
                 
                 SelectFilter::make('origin_id')
                     ->relationship('origin', 'name')
@@ -130,30 +162,67 @@ class TransfersTable
                     }),
             ], layout: FiltersLayout::AboveContent)
             ->recordActions([
-                Action::make('ejecutar_traslado')
-                    ->label('Ejecutar Traslado')
-                    ->icon('heroicon-o-arrow-path')
+                Action::make('ejecutar')
+                    ->label('Ejecutar')
+                    ->icon('heroicon-o-play')
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Ejecutar Traslado')
-                    ->modalDescription(fn ($record) => "¿Desea mover el dispositivo {$record->deviceable->serial} a {$record->destiny->name}?")
+                    ->modalDescription(fn ($record) => "¿Desea iniciar el traslado del dispositivo {$record->deviceable->serial}?")
                     ->modalSubmitActionLabel('Sí, ejecutar')
+                    ->successNotificationTitle('Traslado en progreso')
+                    ->action(function ($record) {
+                        $record->update([
+                            'status' => 'En Progreso',
+                            'updated_by' => Auth::id(),
+                        ]);
+                    })
+                    ->after(function () {
+                        // Refrescar la tabla después de ejecutar
+                    })
+                    ->visible(fn ($record) => $record->status === 'Pendiente'),
+                
+                Action::make('finalizar')
+                    ->label('Finalizar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Finalizar Traslado')
+                    ->modalDescription(fn ($record) => "¿Desea finalizar el traslado y mover el dispositivo {$record->deviceable->serial} a {$record->destiny->name}?")
+                    ->modalSubmitActionLabel('Sí, finalizar')
                     ->action(function ($record) {
                         $device = $record->deviceable;
                         $oldLocation = $device->location->name ?? 'Sin ubicación';
+                        $destinyName = $record->destiny->name;
+                        $origin = $record->origin;
                         
-                        $device->update(['location_id' => $record->destiny_id]);
+                        // Verificar si el dispositivo está inactivo y sale de un taller
+                        $willActivate = false;
+                        if ($device->status === 'Inactivo') {
+                            if ($origin && $origin->is_workshop) {
+                                $willActivate = true;
+                            }
+                        }
+                        
+                        $record->update([
+                            'status' => 'Finalizado',
+                            'updated_by' => Auth::id(),
+                        ]);
+                        
+                        // La actualización de ubicación se hace automáticamente en el observer
+                        
+                        $message = "El dispositivo ha sido movido de '{$oldLocation}' a '{$destinyName}'.";
+                        if ($willActivate) {
+                            $message .= " El dispositivo ha sido activado automáticamente.";
+                        }
                         
                         Notification::make()
-                            ->title('Traslado ejecutado')
+                            ->title('Traslado finalizado')
                             ->success()
-                            ->body("El dispositivo ha sido movido de '{$oldLocation}' a '{$record->destiny->name}'.")
+                            ->body($message)
                             ->send();
                     })
-                    ->visible(function ($record) {
-                        $device = $record->deviceable;
-                        return $device && $device->location_id !== $record->destiny_id;
-                    }),
+                    ->visible(fn ($record) => $record->status === 'En Progreso'),
                 
                 ViewAction::make()
                     ->label('Ver'),

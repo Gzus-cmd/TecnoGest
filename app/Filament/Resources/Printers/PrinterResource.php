@@ -6,6 +6,7 @@ use App\Filament\Resources\Printers\Pages\CreatePrinter;
 use App\Filament\Resources\Printers\Pages\EditPrinter;
 use App\Filament\Resources\Printers\Pages\ListPrinters;
 use App\Filament\Resources\Printers\Schemas\PrinterForm;
+use App\Filament\Resources\Printers\Schemas\PrinterFormSimple;
 use App\Filament\Resources\Printers\Tables\PrintersTable;
 use App\Models\Printer;
 use BackedEnum;
@@ -29,6 +30,11 @@ class PrinterResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
+        // Usar formulario completo para crear, simplificado para editar
+        $page = request()->route()?->getActionMethod();
+        if ($page === 'edit') {
+            return PrinterFormSimple::configure($schema);
+        }
         return PrinterForm::configure($schema);
     }
 

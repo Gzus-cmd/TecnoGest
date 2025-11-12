@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Support\Facades\Auth;
 
 class Component extends Model
 {
@@ -18,7 +19,29 @@ class Component extends Model
         'status',
         'warranty_months',
         'provider_id',
+        'registered_by',
+        'retired_by',
     ];
+
+    protected static function booted(): void
+    {
+        // Al crear un componente, registrar quién lo creó
+        static::creating(function (Component $component) {
+            if (Auth::check() && !$component->registered_by) {
+                $component->registered_by = Auth::id();
+            }
+        });
+
+        // Al cambiar el estado a "Retirado", registrar quién lo retiró
+        static::updating(function (Component $component) {
+            if ($component->isDirty('status') && $component->status === 'Retirado') {
+                if (Auth::check() && !$component->retired_by) {
+                    $component->retired_by = Auth::id();
+                    $component->output_date = now()->toDateString();
+                }
+            }
+        });
+    }
 
     public function componentable() : MorphTo
     {
@@ -30,26 +53,36 @@ class Component extends Model
         return $this->belongsTo(Provider::class);
     }
 
+    public function registeredBy() : BelongsTo
+    {
+        return $this->belongsTo(User::class, 'registered_by');
+    }
+
+    public function retiredBy() : BelongsTo
+    {
+        return $this->belongsTo(User::class, 'retired_by');
+    }
+
     public function computers() : MorphToMany
     {
-        return $this->morphedByMany(Computer::class, 'componentable')
-            ->withPivot(['assigned_at', 'status'])
+        return $this->morphedByMany(Computer::class, 'componentable', 'componentables')
+            ->withPivot(['assigned_at', 'status', 'assigned_by', 'removed_by'])
             ->withTimestamps()
             ->wherePivot('status', 'Vigente');
     }
 
     public function printers() : MorphToMany
     {
-        return $this->morphedByMany(Printer::class, 'componentable')
-            ->withPivot(['assigned_at', 'status'])
+        return $this->morphedByMany(Printer::class, 'componentable', 'componentables')
+            ->withPivot(['assigned_at', 'status', 'assigned_by', 'removed_by'])
             ->withTimestamps()
             ->wherePivot('status', 'Vigente');
     }
 
     public function projectors() : MorphToMany
     {
-        return $this->morphedByMany(Projector::class, 'componentable')
-            ->withPivot(['assigned_at', 'status'])
+        return $this->morphedByMany(Projector::class, 'componentable', 'componentables')
+            ->withPivot(['assigned_at', 'status', 'assigned_by', 'removed_by'])
             ->withTimestamps()
             ->wherePivot('status', 'Vigente');
     }
@@ -58,16 +91,16 @@ class Component extends Model
     public function allAssignments() : MorphToMany
     {
         // Unión de todos los dispositivos (Computer, Printer, Projector)
-        return $this->morphedByMany(Computer::class, 'componentable')
-            ->withPivot(['assigned_at', 'status', 'componentable_type'])
+        return $this->morphedByMany(Computer::class, 'componentable', 'componentables')
+            ->withPivot(['assigned_at', 'status', 'componentable_type', 'assigned_by', 'removed_by'])
             ->withTimestamps()
             ->orderByPivot('assigned_at', 'desc');
     }
 
     public function assignmentHistory()
     {
-        $computers = $this->morphedByMany(Computer::class, 'componentable')
-            ->withPivot(['assigned_at', 'status'])
+        $computers = $this->morphedByMany(Computer::class, 'componentable', 'componentables')
+            ->withPivot(['assigned_at', 'status', 'assigned_by', 'removed_by'])
             ->withTimestamps()
             ->get()
             ->map(function ($device) {
@@ -77,11 +110,13 @@ class Component extends Model
                     'device_location' => $device->location->name ?? 'N/A',
                     'assigned_at' => $device->pivot->assigned_at,
                     'status' => $device->pivot->status,
+                    'assigned_by' => $device->pivot->assigned_by,
+                    'removed_by' => $device->pivot->removed_by,
                 ];
             });
 
-        $printers = $this->morphedByMany(Printer::class, 'componentable')
-            ->withPivot(['assigned_at', 'status'])
+        $printers = $this->morphedByMany(Printer::class, 'componentable', 'componentables')
+            ->withPivot(['assigned_at', 'status', 'assigned_by', 'removed_by'])
             ->withTimestamps()
             ->get()
             ->map(function ($device) {
@@ -91,11 +126,13 @@ class Component extends Model
                     'device_location' => $device->location->name ?? 'N/A',
                     'assigned_at' => $device->pivot->assigned_at,
                     'status' => $device->pivot->status,
+                    'assigned_by' => $device->pivot->assigned_by,
+                    'removed_by' => $device->pivot->removed_by,
                 ];
             });
 
-        $projectors = $this->morphedByMany(Projector::class, 'componentable')
-            ->withPivot(['assigned_at', 'status'])
+        $projectors = $this->morphedByMany(Projector::class, 'componentable', 'componentables')
+            ->withPivot(['assigned_at', 'status', 'assigned_by', 'removed_by'])
             ->withTimestamps()
             ->get()
             ->map(function ($device) {
@@ -105,6 +142,8 @@ class Component extends Model
                     'device_location' => $device->location->name ?? 'N/A',
                     'assigned_at' => $device->pivot->assigned_at,
                     'status' => $device->pivot->status,
+                    'assigned_by' => $device->pivot->assigned_by,
+                    'removed_by' => $device->pivot->removed_by,
                 ];
             });
 

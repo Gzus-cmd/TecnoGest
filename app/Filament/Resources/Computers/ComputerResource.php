@@ -6,6 +6,7 @@ use App\Filament\Resources\Computers\Pages\CreateComputer;
 use App\Filament\Resources\Computers\Pages\EditComputer;
 use App\Filament\Resources\Computers\Pages\ListComputers;
 use App\Filament\Resources\Computers\Schemas\ComputerForm;
+use App\Filament\Resources\Computers\Schemas\ComputerFormSimple;
 use App\Filament\Resources\Computers\Tables\ComputersTable;
 use App\Models\Computer;
 use BackedEnum;
@@ -33,6 +34,13 @@ class ComputerResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
+        // Usar formulario completo para crear, simplificado para editar
+        $livewire = $schema->getLivewire();
+        
+        if ($livewire instanceof EditComputer) {
+            return ComputerFormSimple::configure($schema);
+        }
+        
         return ComputerForm::configure($schema);
     }
 

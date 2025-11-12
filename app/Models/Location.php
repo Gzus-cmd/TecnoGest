@@ -11,7 +11,8 @@ class Location extends Model
     protected $fillable = [
         'name',
         'pavilion',
-        'apartment'
+        'apartment',
+        'is_workshop'
     ];
 
     public function transfers() : HasMany

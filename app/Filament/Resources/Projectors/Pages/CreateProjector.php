@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Projectors\Pages;
 use App\Filament\Resources\Projectors\ProjectorResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class CreateProjector extends CreateRecord
 {
@@ -28,7 +29,8 @@ class CreateProjector extends CreateRecord
         if ($stabilizerComponentId) {
             $projector->components()->attach($stabilizerComponentId, [
                 'assigned_at' => now(),
-                'status' => 'Vigente'
+                'status' => 'Vigente',
+                'assigned_by' => Auth::id(),
             ]);
         }
 

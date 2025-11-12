@@ -2,9 +2,7 @@
 
 namespace App\Filament\Resources\Printers\Schemas;
 
-use App\Models\Component;
 use App\Models\Location;
-use App\Models\Stabilizer;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -12,9 +10,8 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use Illuminate\Database\Eloquent\Model;
 
-class PrinterForm
+class PrinterFormSimple
 {
     public static function configure(Schema $schema): Schema
     {
@@ -37,7 +34,7 @@ class PrinterForm
                     ]),
 
                 Section::make('Ubicación y Estado')
-                    ->description('Departamento e estado de la impresora')
+                    ->description('Departamento y estado de la impresora')
                     ->schema([
                         Grid::make(2)
                             ->schema([
@@ -98,34 +95,6 @@ class PrinterForm
                                     ->required(),
                                 DatePicker::make('output_date')
                                     ->label('Fecha de Salida'),
-                            ]),
-                    ]),
-
-                Section::make('Componentes Adicionales')
-                    ->description('Estabilizador y otros componentes')
-                    ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                Select::make('stabilizer_component_id')
-                                    ->label('Estabilizador')
-                                    ->options(function ($livewire) {
-                                        $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
-                                            ? $livewire->getRecord() 
-                                            : null;
-                                        
-                                        $query = Component::where('componentable_type', 'App\Models\Stabilizer')
-                                            ->where('status', 'Operativo');
-                                        
-                                        // Los estabilizadores pueden estar asignados a múltiples dispositivos
-                                        // No aplicamos whereDoesntHave para permitir reutilización
-                                        
-                                        return $query->get()
-                                            ->mapWithKeys(function ($component) {
-                                                $stab = $component->componentable;
-                                                return [$component->id => "{$stab->brand} {$stab->model} - {$stab->capacity}VA - Serial: {$component->serial}"];
-                                            });
-                                    })
-                                    ->searchable(),
                             ]),
                     ]),
             ]);
