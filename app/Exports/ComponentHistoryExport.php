@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -16,7 +17,10 @@ class ComponentHistoryExport implements FromCollection, WithHeadings, WithMappin
 
     public function __construct(Collection $records)
     {
-        $this->records = $records;
+        // Aplicar eager loading para evitar N+1 queries
+        $this->records = $records->load([
+            'componentable'
+        ]);
     }
 
     public function collection()
@@ -69,7 +73,9 @@ class ComponentHistoryExport implements FromCollection, WithHeadings, WithMappin
                 $brand = $component->brand ?? 'N/A';
                 $model = $component->model ?? 'N/A';
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning("Error al exportar historial de componente {$record->id}: " . $e->getMessage());
+        }
         
         // Obtener detalles del dispositivo
         $deviceType = 'N/A';
@@ -92,7 +98,9 @@ class ComponentHistoryExport implements FromCollection, WithHeadings, WithMappin
                 $deviceSerial = $device->serial;
                 $location = $device->location->name ?? 'Sin ubicación';
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning("Error al exportar dispositivo del historial: " . $e->getMessage());
+        }
         
         return [
             $componentType,

@@ -29,6 +29,11 @@ class Transfer extends Model
                 $transfer->registered_by = Auth::id();
             }
             
+            // Validar que el dispositivo no esté desmantelado
+            if ($transfer->deviceable && $transfer->deviceable->status === 'Desmantelado') {
+                throw new \Exception('No se puede trasladar un dispositivo desmantelado');
+            }
+            
             // Establecer automáticamente el origen como la ubicación actual del dispositivo
             if (!$transfer->origin_id && $transfer->deviceable) {
                 $transfer->origin_id = $transfer->deviceable->location_id;
@@ -64,7 +69,9 @@ class Transfer extends Model
     {
         $device = $this->deviceable;
         
-        if ($device && $this->destiny_id && $this->status === 'Finalizado') {
+        if ($device && $this->destiny_id && 
+            $this->status === 'Finalizado' && 
+            $this->wasChanged('status')) {
             $device->update(['location_id' => $this->destiny_id]);
             
             // Si el dispositivo está Inactivo y sale de un taller

@@ -51,7 +51,7 @@ class MaintenancesTable
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Pendiente' => 'warning',
-                        'En Progreso' => 'primary',
+                        'En Proceso' => 'primary',
                         'Finalizado' => 'success',
                     }),
                 TextColumn::make('registeredBy.name')
@@ -84,7 +84,7 @@ class MaintenancesTable
                 SelectFilter::make('status')
                     ->options([
                         'Pendiente' => 'Pendiente',
-                        'En Progreso' => 'En Progreso',
+                        'En Proceso' => 'En Proceso',
                         'Finalizado' => 'Finalizado',
                     ])
                     ->label('Estado'),
@@ -156,17 +156,17 @@ class MaintenancesTable
                     ->modalHeading('Ejecutar Mantenimiento')
                     ->modalDescription(fn ($record) => $record->requires_workshop 
                         ? '¿Está seguro de que desea ejecutar este mantenimiento? El dispositivo será trasladado automáticamente al Taller de Informática.'
-                        : '¿Está seguro de que desea marcar este mantenimiento como "En Progreso"?'
+                        : '¿Está seguro de que desea marcar este mantenimiento como "En Proceso"?'
                     )
                     ->modalSubmitActionLabel('Sí, ejecutar')
                     ->action(function ($record) {
                         // Simplemente actualizamos el status, el observer se encargará del resto
-                        $record->status = 'En Progreso';
+                        $record->status = 'En Proceso';
                         $record->save();
                         
                         $message = $record->requires_workshop 
                             ? 'El mantenimiento ha sido iniciado y el dispositivo ha sido trasladado al Taller de Informática.'
-                            : 'El mantenimiento ha sido marcado como "En Progreso".';
+                            : 'El mantenimiento ha sido marcado como "En Proceso".';
                         
                         Notification::make()
                             ->title('Mantenimiento iniciado')
@@ -194,7 +194,7 @@ class MaintenancesTable
                             ->body('El mantenimiento ha sido completado exitosamente.')
                             ->send();
                     })
-                    ->visible(fn ($record) => $record->status === 'En Progreso'),
+                    ->visible(fn ($record) => $record->status === 'En Proceso'),
                 
                 ViewAction::make()
                     ->label('Ver'),

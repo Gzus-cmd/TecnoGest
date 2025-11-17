@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -16,7 +17,14 @@ class ComponentsExport implements FromCollection, WithHeadings, WithMapping, Wit
 
     public function __construct(Collection $records)
     {
-        $this->records = $records;
+        // Aplicar eager loading para evitar N+1 queries
+        $this->records = $records->load([
+            'componentable',
+            'provider',
+            'computers.location',
+            'printers.location',
+            'projectors.location'
+        ]);
     }
 
     public function collection()
@@ -58,6 +66,7 @@ class ComponentsExport implements FromCollection, WithHeadings, WithMapping, Wit
             str_contains($record->componentable_type, 'TowerCase') => 'Gabinete',
             str_contains($record->componentable_type, 'Splitter') => 'Splitter',
             str_contains($record->componentable_type, 'AudioDevice') => 'Dispositivo de Audio',
+            str_contains($record->componentable_type, 'SparePart') => 'Repuesto',
             default => 'Otro',
         };
 
@@ -70,7 +79,9 @@ class ComponentsExport implements FromCollection, WithHeadings, WithMapping, Wit
                 $brand = $componentable->brand ?? 'N/A';
                 $model = $componentable->model ?? 'N/A';
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning("Error al exportar componente {$record->id}: " . $e->getMessage());
+        }
 
         // Obtener asignación
         $assignment = 'Disponible';

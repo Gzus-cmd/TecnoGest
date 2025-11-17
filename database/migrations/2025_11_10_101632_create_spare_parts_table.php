@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('spare_parts', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
             $table->string('brand');
             $table->string('model');
             $table->text('description')->nullable();
@@ -42,9 +41,6 @@ return new class extends Migration
                 'Ventilador',
                 'Otro'
             ]);
-            $table->decimal('cost_price', 10, 2)->default(0);
-            $table->integer('stock')->default(0);
-            $table->foreignId('provider_id')->constrained();
             $table->json('specifications')->nullable();
             $table->timestamps();
         });

@@ -55,7 +55,7 @@ class TransfersTable
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Pendiente' => 'gray',
-                        'En Progreso' => 'warning',
+                        'En Proceso' => 'warning',
                         'Finalizado' => 'success',
                     }),
                 TextColumn::make('date')
@@ -94,7 +94,7 @@ class TransfersTable
                 SelectFilter::make('status')
                     ->options([
                         'Pendiente' => 'Pendiente',
-                        'En Progreso' => 'En Progreso',
+                        'En Proceso' => 'En Proceso',
                         'Finalizado' => 'Finalizado',
                     ])
                     ->multiple()
@@ -170,10 +170,10 @@ class TransfersTable
                     ->modalHeading('Ejecutar Traslado')
                     ->modalDescription(fn ($record) => "¿Desea iniciar el traslado del dispositivo {$record->deviceable->serial}?")
                     ->modalSubmitActionLabel('Sí, ejecutar')
-                    ->successNotificationTitle('Traslado en progreso')
+                    ->successNotificationTitle('Traslado en proceso')
                     ->action(function ($record) {
                         $record->update([
-                            'status' => 'En Progreso',
+                            'status' => 'En Proceso',
                             'updated_by' => Auth::id(),
                         ]);
                     })
@@ -222,7 +222,7 @@ class TransfersTable
                             ->body($message)
                             ->send();
                     })
-                    ->visible(fn ($record) => $record->status === 'En Progreso'),
+                    ->visible(fn ($record) => $record->status === 'En Proceso'),
                 
                 ViewAction::make()
                     ->label('Ver'),

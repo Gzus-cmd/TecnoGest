@@ -75,8 +75,20 @@ class DatabaseSeeder extends Seeder
             PrinterModelSeeder::class,
             ProjectorModelSeeder::class,
             
-            // Piezas de repuesto
+            // Catálogo de repuestos
             SparePartSeeder::class,
+            
+            // Instancias de repuestos (componentes)
+            SparePartComponentSeeder::class,
+            
+            // Dispositivos (computadoras, impresoras, proyectores)
+            ComputerSeeder::class,
+            PrinterSeeder::class,
+            ProjectorSeeder::class,
+            
+            // Historial de mantenimientos y traslados
+            MaintenanceSeeder::class,
+            TransferSeeder::class,
         ]);
 
         $this->command->newLine();

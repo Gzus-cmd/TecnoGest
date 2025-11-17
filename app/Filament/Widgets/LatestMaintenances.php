@@ -60,7 +60,7 @@ class LatestMaintenances extends BaseWidget
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Pendiente' => 'warning',
-                        'En Progreso' => 'primary',
+                        'En Proceso' => 'primary',
                         'Finalizado' => 'success',
                     }),
                 

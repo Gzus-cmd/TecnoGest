@@ -17,6 +17,36 @@ use Filament\Schemas\Schema;
 
 class MaintenanceForm
 {
+    /**
+     * Crea un tipo de MorphToSelect con búsqueda personalizada por serial y ubicación
+     */
+    private static function makeSearchableDeviceType(
+        string $modelClass,
+        string $label
+    ): MorphToSelect\Type {
+        return MorphToSelect\Type::make($modelClass)
+            ->label($label)
+            ->getSearchResultsUsing(function (string $search) use ($modelClass): array {
+                return $modelClass::query()
+                    ->where('serial', 'like', "%{$search}%")
+                    ->orWhereHas('location', function ($query) use ($search) {
+                        $query->where('pavilion', 'like', "%{$search}%")
+                            ->orWhere('name', 'like', "%{$search}%");
+                    })
+                    ->with('location')
+                    ->limit(50)
+                    ->get()
+                    ->mapWithKeys(fn ($record) => [
+                        $record->getKey() => "{$record->serial} | {$record->location->pavilion} - {$record->location->name}"
+                    ])
+                    ->toArray();
+            })
+            ->getOptionLabelUsing(function ($value) use ($modelClass): ?string {
+                $record = $modelClass::with('location')->find($value);
+                return $record ? "{$record->serial} | {$record->location->pavilion} - {$record->location->name}" : null;
+            });
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -37,7 +67,7 @@ class MaintenanceForm
                                     ->label('Estado')
                                     ->options([
                                         'Pendiente' => 'Pendiente',
-                                        'En Progreso' => 'En progreso',
+                                        'En Proceso' => 'En proceso',
                                         'Finalizado' => 'Finalizado',
                                     ])
                                     ->required(),
@@ -68,28 +98,15 @@ class MaintenanceForm
                 Section::make('Dispositivo y Técnico')
                     ->description('Información del dispositivo a mantener')
                     ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                MorphToSelect::make('deviceable')
+                        MorphToSelect::make('deviceable')
                             ->types([
-                                MorphToSelect\Type::make(Computer::class)
-                                    ->titleAttribute('serial')
-                                    ->label('Computadora')
-                                    ->getOptionLabelFromRecordUsing(fn (Computer $record): string => "{$record->location->pavilion} - {$record->location->name} | {$record->serial}"),
-                                MorphToSelect\Type::make(Printer::class)
-                                    ->titleAttribute('serial')
-                                    ->label('Impresora')
-                                    ->getOptionLabelFromRecordUsing(fn (Printer $record): string => "{$record->location->pavilion} - {$record->location->name} | {$record->serial}"),
-                                MorphToSelect\Type::make(Projector::class)
-                                    ->titleAttribute('serial')
-                                    ->label('Proyector')
-                                    ->getOptionLabelFromRecordUsing(fn (Projector $record): string => "{$record->location->pavilion} - {$record->location->name} | {$record->serial}"),
+                                self::makeSearchableDeviceType(Computer::class, 'Computadora'),
+                                self::makeSearchableDeviceType(Printer::class, 'Impresora'),
+                                self::makeSearchableDeviceType(Projector::class, 'Proyector'),
                             ])
                             ->label('Seleccionar Dispositivo')
                             ->searchable()
                             ->required()
-                            ]),
-                        
                     ]),
 
                 Section::make('Descripción')

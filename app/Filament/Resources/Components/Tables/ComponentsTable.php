@@ -43,6 +43,7 @@ class ComponentsTable
                         str_contains($state, 'TowerCase') => 'Gabinete',
                         str_contains($state, 'Splitter') => 'Splitter',
                         str_contains($state, 'AudioDevice') => 'Dispositivo de Audio',
+                        str_contains($state, 'SparePart') => 'Repuesto',
                         default => $state,
                     };
                 })
@@ -147,6 +148,7 @@ class ComponentsTable
                         'App\Models\TowerCase' => 'Gabinete',
                         'App\Models\Splitter' => 'Splitter',
                         'App\Models\AudioDevice' => 'Dispositivo de Audio',
+                        'App\Models\SparePart' => 'Repuesto',
                     ])
                     ->multiple()
                     ->label('Tipo de Componente'),
@@ -164,6 +166,34 @@ class ComponentsTable
                     ->searchable()
                     ->preload()
                     ->label('Proveedor'),
+                
+                \Filament\Tables\Filters\Filter::make('input_date')
+                    ->form([
+                        \Filament\Forms\Components\DatePicker::make('input_from')
+                            ->label('Fecha de entrada desde'),
+                        \Filament\Forms\Components\DatePicker::make('input_until')
+                            ->label('Fecha de entrada hasta'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['input_from'], fn ($query, $date) => $query->whereDate('input_date', '>=', $date))
+                            ->when($data['input_until'], fn ($query, $date) => $query->whereDate('input_date', '<=', $date));
+                    })
+                    ->label('Fecha de Entrada'),
+                
+                \Filament\Tables\Filters\Filter::make('output_date')
+                    ->form([
+                        \Filament\Forms\Components\DatePicker::make('output_from')
+                            ->label('Fecha de salida desde'),
+                        \Filament\Forms\Components\DatePicker::make('output_until')
+                            ->label('Fecha de salida hasta'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['output_from'], fn ($query, $date) => $query->whereDate('output_date', '>=', $date))
+                            ->when($data['output_until'], fn ($query, $date) => $query->whereDate('output_date', '<=', $date));
+                    })
+                    ->label('Fecha de Salida'),
             ], layout: FiltersLayout::AboveContent)
             ->recordActions([
                 ViewAction::make()

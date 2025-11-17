@@ -37,26 +37,6 @@ class SparePartsTable
                     ->searchable()
                     ->toggleable(),
                     
-                TextColumn::make('components_count')
-                    ->label('Instancias Totales')
-                    ->counts('components')
-                    ->badge()
-                    ->color('info')
-                    ->sortable(),
-                    
-                TextColumn::make('available_components_count')
-                    ->label('Disponibles')
-                    ->getStateUsing(function ($record) {
-                        return $record->components()
-                            ->where('status', 'Operativo')
-                            ->whereDoesntHave('computers')
-                            ->whereDoesntHave('printers')
-                            ->whereDoesntHave('projectors')
-                            ->count();
-                    })
-                    ->badge()
-                    ->color('success'),
-                    
                 TextColumn::make('created_at')
                     ->label('Registrado')
                     ->dateTime('d/m/Y')

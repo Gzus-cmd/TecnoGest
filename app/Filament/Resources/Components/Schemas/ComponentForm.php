@@ -14,6 +14,7 @@ use App\Models\Monitor;
 use App\Models\Keyboard;
 use App\Models\Mouse;
 use App\Models\AudioDevice;
+use App\Models\SparePart;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -25,6 +26,41 @@ use Filament\Forms\Components\MorphToSelect;
 
 class ComponentForm
 {
+    /**
+     * Crea un tipo de MorphToSelect con búsqueda personalizada
+     */
+    private static function makeSearchableType(
+        string $modelClass,
+        string $label,
+        array $searchFields,
+        callable $labelFormatter
+    ): MorphToSelect\Type {
+        return MorphToSelect\Type::make($modelClass)
+            ->label($label)
+            ->getSearchResultsUsing(function (string $search) use ($modelClass, $searchFields, $labelFormatter): array {
+                $query = $modelClass::query();
+                
+                foreach ($searchFields as $index => $field) {
+                    if ($index === 0) {
+                        $query->where($field, 'like', "%{$search}%");
+                    } else {
+                        $query->orWhere($field, 'like', "%{$search}%");
+                    }
+                }
+                
+                return $query->limit(50)
+                    ->get()
+                    ->mapWithKeys(fn ($record) => [
+                        $record->getKey() => $labelFormatter($record)
+                    ])
+                    ->toArray();
+            })
+            ->getOptionLabelUsing(function ($value) use ($modelClass, $labelFormatter): ?string {
+                $record = $modelClass::find($value);
+                return $record ? $labelFormatter($record) : null;
+            });
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -34,44 +70,87 @@ class ComponentForm
                     ->schema([
                         MorphToSelect::make('componentable')
                             ->types([
-                                MorphToSelect\Type::make(CPU::class)
-                                    ->label('Procesador (CPU)')
-                                    ->getOptionLabelFromRecordUsing(fn (CPU $record): string => "{$record->brand} - {$record->model} ({$record->cores} núcleos)"),
-                                MorphToSelect\Type::make(GPU::class)
-                                    ->label('Tarjeta Gráfica (GPU)')
-                                    ->getOptionLabelFromRecordUsing(fn (GPU $record): string => "{$record->brand} - {$record->model} ({$record->memory}GB)"),
-                                MorphToSelect\Type::make(RAM::class)
-                                    ->label('Memoria RAM')
-                                    ->getOptionLabelFromRecordUsing(fn (RAM $record): string => "{$record->brand} - {$record->capacity}GB {$record->type}"),
-                                MorphToSelect\Type::make(Motherboard::class)
-                                    ->label('Placa Base')
-                                    ->getOptionLabelFromRecordUsing(fn (Motherboard $record): string => "{$record->brand} - {$record->model}"),
-                                MorphToSelect\Type::make(ROM::class)
-                                    ->label('Almacenamiento')
-                                    ->getOptionLabelFromRecordUsing(fn (ROM $record): string => "{$record->brand} - {$record->capacity}GB {$record->type}"),
-                                MorphToSelect\Type::make(PowerSupply::class)
-                                    ->label('Fuente de Poder')
-                                    ->getOptionLabelFromRecordUsing(fn (PowerSupply $record): string => "{$record->brand} - {$record->watts}W"),
-                                MorphToSelect\Type::make(NetworkAdapter::class)
-                                    ->label('Adaptador de Red')
-                                    ->getOptionLabelFromRecordUsing(fn (NetworkAdapter $record): string => "{$record->brand} - {$record->model}"),
-                                MorphToSelect\Type::make(TowerCase::class)
-                                    ->label('Gabinete')
-                                    ->getOptionLabelFromRecordUsing(fn (TowerCase $record): string => "{$record->brand} - {$record->model}"),
-                                MorphToSelect\Type::make(Monitor::class)
-                                    ->label('Monitor')
-                                    ->getOptionLabelFromRecordUsing(fn (Monitor $record): string => "{$record->brand} - {$record->size}\""),
-                                MorphToSelect\Type::make(Keyboard::class)
-                                    ->label('Teclado')
-                                    ->getOptionLabelFromRecordUsing(fn (Keyboard $record): string => "{$record->brand} - {$record->model}"),
-                                MorphToSelect\Type::make(Mouse::class)
-                                    ->label('Ratón')
-                                    ->getOptionLabelFromRecordUsing(fn (Mouse $record): string => "{$record->brand} - {$record->model}"),
-                                MorphToSelect\Type::make(AudioDevice::class)
-                                    ->label('Dispositivo de Audio')
-                                    ->getOptionLabelFromRecordUsing(fn (AudioDevice $record): string => "{$record->brand} - {$record->model}"),
+                                self::makeSearchableType(
+                                    CPU::class,
+                                    'Procesador (CPU)',
+                                    ['brand', 'model', 'socket'],
+                                    fn($r) => "{$r->brand} - {$r->model} ({$r->cores} núcleos)"
+                                ),
+                                self::makeSearchableType(
+                                    GPU::class,
+                                    'Tarjeta Gráfica (GPU)',
+                                    ['brand', 'model', 'memory', 'interface'],
+                                    fn($r) => "{$r->brand} - {$r->model} ({$r->interface} {$r->type} {$r->memory}GB)"
+                                ),
+                                self::makeSearchableType(
+                                    RAM::class,
+                                    'Memoria RAM',
+                                    ['brand', 'model', 'type'],
+                                    fn($r) => "{$r->brand} - {$r->model} ({$r->type} - {$r->capacity}GB)"
+                                ),
+                                self::makeSearchableType(
+                                    Motherboard::class,
+                                    'Placa Base',
+                                    ['brand', 'model', 'socket'],
+                                    fn($r) => "{$r->brand} - {$r->model}"
+                                ),
+                                self::makeSearchableType(
+                                    ROM::class,
+                                    'Almacenamiento',
+                                    ['brand', 'type'],
+                                    fn($r) => "{$r->brand} - {$r->capacity}GB {$r->type}"
+                                ),
+                                self::makeSearchableType(
+                                    PowerSupply::class,
+                                    'Fuente de Poder',
+                                    ['brand'],
+                                    fn($r) => "{$r->brand} - {$r->watts}W"
+                                ),
+                                self::makeSearchableType(
+                                    NetworkAdapter::class,
+                                    'Adaptador de Red',
+                                    ['brand', 'model'],
+                                    fn($r) => "{$r->brand} - {$r->model}"
+                                ),
+                                self::makeSearchableType(
+                                    TowerCase::class,
+                                    'Gabinete',
+                                    ['brand', 'model'],
+                                    fn($r) => "{$r->brand} - {$r->model}"
+                                ),
+                                self::makeSearchableType(
+                                    Monitor::class,
+                                    'Monitor',
+                                    ['brand', 'model'],
+                                    fn($r) => "{$r->brand} - {$r->size}"
+                                ),
+                                self::makeSearchableType(
+                                    Keyboard::class,
+                                    'Teclado',
+                                    ['brand', 'model'],
+                                    fn($r) => "{$r->brand} - {$r->model}"
+                                ),
+                                self::makeSearchableType(
+                                    Mouse::class,
+                                    'Ratón',
+                                    ['brand', 'model'],
+                                    fn($r) => "{$r->brand} - {$r->model}"
+                                ),
+                                self::makeSearchableType(
+                                    AudioDevice::class,
+                                    'Dispositivo de Audio',
+                                    ['brand', 'model'],
+                                    fn($r) => "{$r->brand} - {$r->model}"
+                                ),
+                                self::makeSearchableType(
+                                    SparePart::class,
+                                    'Repuesto (Impresora/Proyector)',
+                                    ['brand', 'model', 'type'],
+                                    fn($r) => "{$r->brand} - {$r->model} ({$r->type})"
+                                ),
                             ])
                             ->label('Seleccionar Hardware')
+                            ->searchable()
                             ->required()
                     ])
                     ->columns(1),

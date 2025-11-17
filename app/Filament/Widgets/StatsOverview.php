@@ -39,7 +39,7 @@ class StatsOverview extends BaseWidget
 
         // Mantenimientos
         $pendingMaintenances = Maintenance::where('status', 'Pendiente')->count();
-        $inProgressMaintenances = Maintenance::where('status', 'En Progreso')->count();
+        $inProgressMaintenances = Maintenance::where('status', 'En Proceso')->count();
 
         // Total de dispositivos
         $totalDevices = $totalComputers + $totalPrinters + $totalProjectors;
@@ -76,7 +76,7 @@ class StatsOverview extends BaseWidget
                 ->color($deficientComponents > 5 ? 'warning' : 'success'),
             
             Stat::make('Mantenimientos', $pendingMaintenances + $inProgressMaintenances)
-                ->description("{$pendingMaintenances} pendientes | {$inProgressMaintenances} en progreso")
+                ->description("{$pendingMaintenances} pendientes | {$inProgressMaintenances} en proceso")
                 ->descriptionIcon('heroicon-m-wrench-screwdriver')
                 ->color($pendingMaintenances > 10 ? 'danger' : ($pendingMaintenances > 5 ? 'warning' : 'success')),
         ];

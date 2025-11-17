@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class Maintenance extends Model
 {
@@ -18,6 +19,7 @@ class Maintenance extends Model
         'status',
         'description',
         'requires_workshop',
+        'workshop_location_id',
         'device_previous_status',
         'workshop_transfer_id',
         'updated_by',
@@ -34,6 +36,12 @@ class Maintenance extends Model
             if (Auth::check() && !$maintenance->registered_by) {
                 $maintenance->registered_by = Auth::id();
             }
+            
+            // Validar que el dispositivo esté Activo o Inactivo
+            if ($maintenance->deviceable && 
+                !in_array($maintenance->deviceable->status, ['Activo', 'Inactivo'])) {
+                throw new \Exception('Solo se puede crear mantenimiento para dispositivos Activos o Inactivos');
+            }
         });
 
         // Al actualizar un mantenimiento, registrar quién lo modificó
@@ -43,7 +51,7 @@ class Maintenance extends Model
             }
             
             // Si cambió el status, guardar el estado anterior del dispositivo
-            if ($maintenance->isDirty('status') && $maintenance->status === 'En Progreso') {
+            if ($maintenance->isDirty('status') && $maintenance->status === 'En Proceso') {
                 $device = $maintenance->deviceable;
                 if ($device && !$maintenance->device_previous_status) {
                     $maintenance->device_previous_status = $device->status;
@@ -70,8 +78,8 @@ class Maintenance extends Model
             return;
         }
 
-        // Cuando el mantenimiento pasa a "En Progreso"
-        if ($this->status === 'En Progreso') {
+        // Cuando el mantenimiento pasa a "En Proceso"
+        if ($this->status === 'En Proceso') {
             // Cambiar dispositivo a "En Mantenimiento"
             $device->update(['status' => 'En Mantenimiento']);
             
@@ -95,14 +103,18 @@ class Maintenance extends Model
     }
 
     /**
-     * Crea un traslado al área de Informática
+     * Crea un traslado al taller de informática
      */
     protected function createWorkshopTransfer(): void
     {
         $device = $this->deviceable;
-        $informaticaLocation = \App\Models\Location::where('name', 'Sala de Informática')->first();
         
-        if (!$device || !$informaticaLocation) {
+        // Usar el workshop_location_id del mantenimiento o buscar un taller disponible
+        $workshopLocationId = $this->workshop_location_id ?? 
+                              \App\Models\Location::where('is_workshop', true)->first()?->id;
+        
+        if (!$device || !$workshopLocationId) {
+            Log::warning("No se pudo crear traslado a taller para mantenimiento {$this->id}: dispositivo o taller no encontrado");
             return;
         }
 
@@ -111,9 +123,10 @@ class Maintenance extends Model
             'deviceable_id' => $this->deviceable_id,
             'registered_by' => $this->registered_by,
             'origin_id' => $device->location_id,
-            'destiny_id' => $informaticaLocation->id,
+            'destiny_id' => $workshopLocationId,
             'date' => now(),
             'reason' => "Traslado a taller por mantenimiento {$this->type} - ID: {$this->id}",
+            'status' => 'Finalizado',
         ]);
 
         // Actualizar sin disparar eventos para evitar recursión

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->enum('type', ['Preventivo', 'Correctivo']);
             $table->morphs('deviceable');
             $table->foreignId('registered_by')->constrained('users');
-            $table->enum('status', ['Pendiente', 'En Progreso', 'Finalizado']);
+            $table->enum('status', ['Pendiente', 'En Proceso', 'Finalizado']);
             $table->text('description');
             $table->boolean('requires_workshop')->default(false);
             $table->string('device_previous_status')->nullable();

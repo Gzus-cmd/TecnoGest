@@ -42,6 +42,12 @@ class ComponentHistoryResource extends Resource
             ->modifyQueryUsing(function (Builder $query) {
                 // Join con la tabla pivot para obtener el historial
                 $query->join('componentables', 'components.id', '=', 'componentables.component_id')
+                    ->with([
+                        'componentable',
+                        'computers.location',
+                        'printers.location',
+                        'projectors.location'
+                    ])
                     ->select([
                         'components.id',
                         'components.serial',

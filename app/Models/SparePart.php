@@ -16,27 +16,15 @@ class SparePart extends Model
         'specifications',
     ];
 
-    protected $casts = [
-        'specifications' => 'array',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'specifications' => 'array',
+        ];
+    }
 
-    /**
-     * Obtener todas las instancias (componentes) de este repuesto
-     */
     public function components(): MorphMany
     {
         return $this->morphMany(Component::class, 'componentable');
-    }
-
-    /**
-     * Obtener solo las instancias disponibles
-     */
-    public function availableComponents(): MorphMany
-    {
-        return $this->morphMany(Component::class, 'componentable')
-            ->where('status', 'Operativo')
-            ->doesntHave('computers')
-            ->doesntHave('printers')
-            ->doesntHave('projectors');
     }
 }
