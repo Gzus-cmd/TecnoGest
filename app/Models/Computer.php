@@ -16,6 +16,7 @@ class Computer extends Model
         'status',
         'ip_address',
         'os_id',
+        'peripheral_id',
     ];
 
     protected static function booted(): void
@@ -26,6 +27,8 @@ class Computer extends Model
 
     /**
      * Desmantela todos los componentes vigentes de esta computadora
+     * Solo desmantela componentes INTERNOS (CPU, GPU, RAM, etc.)
+     * NO desmantela periféricos (Monitor, Teclado, Mouse, etc.)
      */
     public function dismantleAllComponents(): void
     {
@@ -40,6 +43,11 @@ class Computer extends Model
         return $this->belongsTo(Location::class);
     }
 
+    public function peripheral() : BelongsTo
+    {
+        return $this->belongsTo(Peripheral::class);
+    }
+
     public function os() : BelongsTo
     {
         return $this->belongsTo(OS::class, 'os_id');
@@ -50,7 +58,15 @@ class Computer extends Model
         return $this->morphToMany(Component::class, 'componentable')
             ->withPivot(['assigned_at', 'status'])
             ->withTimestamps()
-            ->wherePivot('status', 'Vigente'); // Solo componentes actualmente vigentes
+            ->wherePivot('status', 'Vigente')
+            ->whereNotIn('components.componentable_type', [
+                'App\Models\Monitor',
+                'App\Models\Keyboard',
+                'App\Models\Mouse',
+                'App\Models\AudioDevice',
+                'App\Models\Stabilizer',
+                'App\Models\Splitter',
+            ]); // Solo componentes internos (excluir periféricos)
     }
 
     public function allComponents() : MorphToMany

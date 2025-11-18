@@ -83,8 +83,21 @@ class Maintenance extends Model
             // Cambiar dispositivo a "En Mantenimiento"
             $device->update(['status' => 'En Mantenimiento']);
             
-            // Si requiere taller, crear traslado a Informática
-            if ($this->requires_workshop && !$this->workshop_transfer_id) {
+            // Si requiere taller Y es una computadora, desasignar periféricos
+            if ($this->requires_workshop && $device instanceof \App\Models\Computer) {
+                if ($device->peripheral_id) {
+                    $peripheral = $device->peripheral;
+                    $peripheral->update([
+                        'computer_id' => null,
+                        'status' => 'Activo' // Queda disponible
+                    ]);
+                    $device->update(['peripheral_id' => null]);
+                }
+                
+                // Crear traslado a taller
+                $this->createWorkshopTransfer();
+            } elseif ($this->requires_workshop) {
+                // Si requiere taller pero NO es computadora, solo crear traslado
                 $this->createWorkshopTransfer();
             }
         }
