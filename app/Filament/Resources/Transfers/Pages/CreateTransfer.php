@@ -6,6 +6,7 @@ use App\Filament\Resources\Transfers\TransferResource;
 use App\Models\Computer;
 use App\Models\Printer;
 use App\Models\Projector;
+use App\Models\Peripheral;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 

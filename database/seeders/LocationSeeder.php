@@ -37,7 +37,6 @@ class LocationSeeder extends Seeder
             ['pavilion' => 'C', 'apartment' => 304, 'name' => 'Laboratorio de Redes'],
             ['pavilion' => 'C', 'apartment' => 305, 'name' => 'Laboratorio de Programación'],
             ['pavilion' => 'C', 'apartment' => 306, 'name' => 'Laboratorio de Hardware'],
-            ['pavilion' => 'C', 'apartment' => 307, 'name' => 'Taller de Mantenimiento'],
 
             // Pabellón D - Biblioteca y Servicios
             ['pavilion' => 'D', 'apartment' => 401, 'name' => 'Biblioteca Central'],
@@ -51,9 +50,8 @@ class LocationSeeder extends Seeder
             ['pavilion' => 'E', 'apartment' => 502, 'name' => 'Centro de Datos'],
             ['pavilion' => 'E', 'apartment' => 503, 'name' => 'UPS y Energía'],
             ['pavilion' => 'E', 'apartment' => 504, 'name' => 'Almacén de Equipos'],
-            ['pavilion' => 'E', 'apartment' => 505, 'name' => 'Taller de Reparaciones'],
+            ['pavilion' => 'E', 'apartment' => 505, 'name' => 'Almacén de Equipos'],
             ['pavilion' => 'E', 'apartment' => 506, 'name' => 'Cuarto de Telecomunicaciones'],
-            ['pavilion' => 'E', 'apartment' => 507, 'name' => 'Sala de Informática'], // Para traslados de mantenimiento
 
             // Pabellón F - Otros
             ['pavilion' => 'F', 'apartment' => 601, 'name' => 'Auditorio'],
@@ -68,13 +66,26 @@ class LocationSeeder extends Seeder
                     'pavilion' => $location['pavilion'],
                     'apartment' => $location['apartment']
                 ],
-                $location
+                array_merge($location, ['is_workshop' => false])
             );
         }
 
+        // Crear TALLER DE MANTENIMIENTO (ubicación especial)
+        Location::firstOrCreate(
+            ['pavilion' => 'TALLER', 'apartment' => 0],
+            [
+                'name' => 'Taller de Mantenimiento',
+                'pavilion' => 'TALLER',
+                'apartment' => 0,
+                'is_workshop' => true,
+            ]
+        );
+
         $count = Location::count();
         $pavilions = Location::distinct('pavilion')->count('pavilion');
+        $workshops = Location::where('is_workshop', true)->count();
         
         $this->command->info("✅ Ubicaciones creadas: {$count} ubicaciones en {$pavilions} pabellones");
+        $this->command->info("   🔧 Talleres: {$workshops}");
     }
 }

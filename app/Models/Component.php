@@ -87,6 +87,14 @@ class Component extends Model
             ->wherePivot('status', 'Vigente');
     }
 
+    public function peripheral() : MorphToMany
+    {
+        return $this->morphedByMany(Peripheral::class, 'componentable', 'componentables')
+            ->withPivot(['assigned_at', 'status', 'assigned_by', 'removed_by'])
+            ->withTimestamps()
+            ->wherePivot('status', 'Vigente');
+    }
+
     // Historial completo de asignaciones
     public function allAssignments() : MorphToMany
     {

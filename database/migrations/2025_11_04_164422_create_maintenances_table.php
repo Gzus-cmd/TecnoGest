@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('status', ['Pendiente', 'En Proceso', 'Finalizado']);
             $table->text('description');
             $table->boolean('requires_workshop')->default(false);
+            $table->foreignId('workshop_location_id')->nullable()->constrained('locations')->onDelete('set null');
             $table->string('device_previous_status')->nullable();
             $table->unsignedBigInteger('workshop_transfer_id')->nullable();
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');

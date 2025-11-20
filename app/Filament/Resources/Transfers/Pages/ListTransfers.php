@@ -35,163 +35,124 @@ class ListTransfers extends ListRecords
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('Intercambiar Ubicaciones de Dispositivos')
-                ->modalDescription('Seleccione dos dispositivos para intercambiar. Los CPU intercambiarán ubicación y periféricos, los demás solo ubicación.')
+                ->modalDescription('Seleccione el tipo y los dispositivos a intercambiar')
                 ->modalIcon('heroicon-o-arrow-path-rounded-square')
                 ->form([
-                    \Filament\Forms\Components\Toggle::make('swap_peripherals')
-                        ->label('Intercambiar Periféricos')
-                        ->helperText('Solo aplica cuando ambos dispositivos son CPU. Si está desactivado, solo se intercambia la ubicación.')
-                        ->default(true)
-                        ->live(),
+                    Select::make('device_type')
+                        ->label('Tipo de Dispositivo')
+                        ->options([
+                            'App\Models\Computer' => 'CPU',
+                            'App\Models\Printer' => 'Impresora',
+                            'App\Models\Projector' => 'Proyector',
+                            'App\Models\Peripheral' => 'Periféricos',
+                        ])
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function ($state, callable $set) {
+                            $set('device_1_id', null);
+                            $set('device_2_id', null);
+                        })
+                        ->helperText('Ambos dispositivos deben ser del mismo tipo'),
                     
-                    Select::make('device_1')
-                        ->label('Primer Dispositivo')
+                    Select::make('device_1_id')
+                        ->label('Dispositivo 1')
                         ->required()
                         ->searchable()
                         ->live()
-                        ->options(function () {
-                            $devices = collect();
+                        ->options(function (Get $get) {
+                            $type = $get('device_type');
+                            if (!$type) return [];
                             
-                            $computers = Computer::with('location', 'peripheral')->get()->map(function ($d) {
-                                $peripheralInfo = $d->peripheral ? ' (con periféricos)' : ' (sin periféricos)';
-                                $locationName = $d->location ? $d->location->name : 'Sin ubicación';
-                                return [
-                                    'type' => Computer::class,
-                                    'id' => $d->id,
-                                    'label' => "CPU: {$d->serial} - {$locationName}{$peripheralInfo}",
-                                ];
-                            });
-                            
-                            $printers = Printer::with('location')->get()->map(function ($d) {
-                                $locationName = $d->location ? $d->location->name : 'Sin ubicación';
-                                return [
-                                    'type' => Printer::class,
-                                    'id' => $d->id,
-                                    'label' => "Impresora: {$d->serial} - {$locationName}",
-                                ];
-                            });
-                            
-                            $projectors = Projector::with('location')->get()->map(function ($d) {
-                                $locationName = $d->location ? $d->location->name : 'Sin ubicación';
-                                return [
-                                    'type' => Projector::class,
-                                    'id' => $d->id,
-                                    'label' => "Proyector: {$d->serial} - {$locationName}",
-                                ];
-                            });
-                            
-                            $peripherals = Peripheral::with('location')->get()->map(function ($d) {
-                                $locationName = $d->location ? $d->location->name : 'Sin ubicación';
-                                $computerInfo = $d->computer_id ? " (asignado)" : " (disponible)";
-                                return [
-                                    'type' => Peripheral::class,
-                                    'id' => $d->id,
-                                    'label' => "Periféricos: {$d->code} - {$locationName}{$computerInfo}",
-                                ];
-                            });
-                            
-                            $devices = $devices->merge($computers)
-                                              ->merge($printers)
-                                              ->merge($projectors)
-                                              ->merge($peripherals);
-                            
-                            return $devices->mapWithKeys(function ($device) {
-                                return ["{$device['type']}:{$device['id']}" => $device['label']];
-                            });
+                            return $type::whereIn('status', ['Activo', 'Inactivo'])
+                                ->with('location')
+                                ->get()
+                                ->mapWithKeys(function ($device) use ($type) {
+                                    $locationName = $device->location?->name ?? 'Sin ubicación';
+                                    $status = " [{$device->status}]";
+                                    
+                                    if ($type === 'App\Models\Computer') {
+                                        $label = "{$device->serial} - {$locationName}{$status}";
+                                    } elseif ($type === 'App\Models\Peripheral') {
+                                        $label = "{$device->code} - {$locationName}{$status}";
+                                    } else {
+                                        $label = "{$device->serial} - {$locationName}{$status}";
+                                    }
+                                    
+                                    return [$device->id => $label];
+                                });
                         })
-                        ->helperText('Seleccione el primer dispositivo para el intercambio'),
+                        ->helperText('Solo se muestran dispositivos Activos o Inactivos'),
                     
-                    Select::make('device_2')
-                        ->label('Segundo Dispositivo')
+                    \Filament\Forms\Components\Toggle::make('swap_peripherals')
+                        ->label('Intercambiar Periféricos')
+                        ->helperText('Intercambiar también los periféricos asignados')
+                        ->default(true)
+                        ->visible(fn (Get $get) => $get('device_type') === 'App\Models\Computer'),
+                    
+                    Select::make('device_2_id')
+                        ->label('Dispositivo 2')
                         ->required()
                         ->searchable()
                         ->options(function (Get $get) {
-                            $selectedDevice1 = $get('device_1');
-                            $devices = collect();
+                            $type = $get('device_type');
+                            $device1Id = $get('device_1_id');
+                            if (!$type) return [];
                             
-                            $computers = Computer::with('location', 'peripheral')->get()->map(function ($d) {
-                                $peripheralInfo = $d->peripheral ? ' (con periféricos)' : ' (sin periféricos)';
-                                $locationName = $d->location ? $d->location->name : 'Sin ubicación';
-                                return [
-                                    'type' => Computer::class,
-                                    'id' => $d->id,
-                                    'label' => "CPU: {$d->serial} - {$locationName}{$peripheralInfo}",
-                                ];
-                            });
-                            
-                            $printers = Printer::with('location')->get()->map(function ($d) {
-                                $locationName = $d->location ? $d->location->name : 'Sin ubicación';
-                                return [
-                                    'type' => Printer::class,
-                                    'id' => $d->id,
-                                    'label' => "Impresora: {$d->serial} - {$locationName}",
-                                ];
-                            });
-                            
-                            $projectors = Projector::with('location')->get()->map(function ($d) {
-                                $locationName = $d->location ? $d->location->name : 'Sin ubicación';
-                                return [
-                                    'type' => Projector::class,
-                                    'id' => $d->id,
-                                    'label' => "Proyector: {$d->serial} - {$locationName}",
-                                ];
-                            });
-                            
-                            $peripherals = Peripheral::with('location')->get()->map(function ($d) {
-                                $locationName = $d->location ? $d->location->name : 'Sin ubicación';
-                                $computerInfo = $d->computer_id ? " (asignado)" : " (disponible)";
-                                return [
-                                    'type' => Peripheral::class,
-                                    'id' => $d->id,
-                                    'label' => "Periféricos: {$d->code} - {$locationName}{$computerInfo}",
-                                ];
-                            });
-                            
-                            $devices = $devices->merge($computers)
-                                              ->merge($printers)
-                                              ->merge($projectors)
-                                              ->merge($peripherals);
-                            
-                            // Filtrar para excluir el device_1 seleccionado
-                            if ($selectedDevice1) {
-                                $devices = $devices->filter(function ($device) use ($selectedDevice1) {
-                                    $deviceKey = "{$device['type']}:{$device['id']}";
-                                    return $deviceKey !== $selectedDevice1;
+                            return $type::whereIn('status', ['Activo', 'Inactivo'])
+                                ->where('id', '!=', $device1Id)
+                                ->with('location')
+                                ->get()
+                                ->mapWithKeys(function ($device) use ($type) {
+                                    $locationName = $device->location?->name ?? 'Sin ubicación';
+                                    $status = " [{$device->status}]";
+                                    
+                                    if ($type === 'App\Models\Computer') {
+                                        $label = "{$device->serial} - {$locationName}{$status}";
+                                    } elseif ($type === 'App\Models\Peripheral') {
+                                        $label = "{$device->code} - {$locationName}{$status}";
+                                    } else {
+                                        $label = "{$device->serial} - {$locationName}{$status}";
+                                    }
+                                    
+                                    return [$device->id => $label];
                                 });
-                            }
-                            
-                            return $devices->mapWithKeys(function ($device) {
-                                return ["{$device['type']}:{$device['id']}" => $device['label']];
-                            });
                         })
-                        ->helperText('Seleccione el segundo dispositivo para el intercambio'),
+                        ->helperText('Excluye automáticamente el Dispositivo 1'),
                 ])
                 ->action(function (array $data): void {
                     DB::transaction(function () use ($data) {
-                        [$type1, $id1] = explode(':', $data['device_1']);
-                        [$type2, $id2] = explode(':', $data['device_2']);
+                        $type = $data['device_type'];
+                        $id1 = $data['device_1_id'];
+                        $id2 = $data['device_2_id'];
                         
-                        $device1 = $type1::find($id1);
-                        $device2 = $type2::find($id2);
+                        $device1 = $type::find($id1);
+                        $device2 = $type::find($id2);
                         
                         $originalLocation1 = $device1->location_id;
                         $originalLocation2 = $device2->location_id;
+                        $originalStatus1 = $device1->status;
+                        $originalStatus2 = $device2->status;
                         
-                        // Si AMBOS son Computers (CPU) Y el toggle está activado, intercambiar ubicación Y periféricos
-                        if ($type1 === Computer::class && $type2 === Computer::class && ($data['swap_peripherals'] ?? true)) {
+                        // Intercambiar ubicaciones
+                        $device1->location_id = $originalLocation2;
+                        $device2->location_id = $originalLocation1;
+                        
+                        // Intercambiar estados si uno es Activo y el otro Inactivo (reposición)
+                        if (($originalStatus1 === 'Activo' && $originalStatus2 === 'Inactivo') ||
+                            ($originalStatus1 === 'Inactivo' && $originalStatus2 === 'Activo')) {
+                            $device1->status = $originalStatus2;
+                            $device2->status = $originalStatus1;
+                        }
+                        
+                        $message = 'Dispositivos intercambiados';
+                        
+                        // Si son Computers (CPU) Y el toggle está activado, intercambiar periféricos
+                        if ($type === Computer::class && ($data['swap_peripherals'] ?? true)) {
                             $originalPeripheral1 = $device1->peripheral_id;
                             $originalPeripheral2 = $device2->peripheral_id;
                             
-                            // Intercambiar ubicaciones
-                            $device1->location_id = $originalLocation2;
-                            $device2->location_id = $originalLocation1;
-                            
-                            // Intercambiar periféricos
                             $device1->peripheral_id = $originalPeripheral2;
                             $device2->peripheral_id = $originalPeripheral1;
-                            
-                            $device1->save();
-                            $device2->save();
                             
                             // Actualizar computer_id en los peripherals si existen
                             if ($originalPeripheral1) {
@@ -202,25 +163,17 @@ class ListTransfers extends ListRecords
                             }
                             
                             $message = 'CPU intercambiados (ubicación y periféricos)';
-                        } else {
-                            // Para otros dispositivos O si el toggle está desactivado, solo intercambiar ubicación
-                            $device1->location_id = $originalLocation2;
-                            $device2->location_id = $originalLocation1;
-                            
-                            $device1->save();
-                            $device2->save();
-                            
-                            if ($type1 === Computer::class && $type2 === Computer::class) {
-                                $message = 'CPU intercambiados (solo ubicación)';
-                            } else {
-                                $message = 'Dispositivos intercambiados (solo ubicación)';
-                            }
+                        } elseif ($type === Computer::class) {
+                            $message = 'CPU intercambiados (solo ubicación)';
                         }
+                        
+                        $device1->save();
+                        $device2->save();
 
                         
                         // Crear registros de traslado para ambos dispositivos
                         Transfer::create([
-                            'deviceable_type' => $type1,
+                            'deviceable_type' => $type,
                             'deviceable_id' => $id1,
                             'origin_id' => $originalLocation1,
                             'destiny_id' => $originalLocation2,
@@ -231,7 +184,7 @@ class ListTransfers extends ListRecords
                         ]);
                         
                         Transfer::create([
-                            'deviceable_type' => $type2,
+                            'deviceable_type' => $type,
                             'deviceable_id' => $id2,
                             'origin_id' => $originalLocation2,
                             'destiny_id' => $originalLocation1,

@@ -239,10 +239,10 @@ class PeripheralsTable
                     }),
 
                 Action::make('actualizarComponentes')
-                    ->label('Actualizar Componentes')
+                    ->label('Actualizar')
                     ->icon('heroicon-o-cpu-chip')
                     ->color('info')
-                    ->modalHeading('Actualizar Componentes Periféricos')
+                    ->modalHeading('Actualizar')
                     ->modalDescription('Modifique los componentes del periférico')
                     ->modalWidth('6xl')
                     ->modalSubmitActionLabel('Guardar Cambios')
@@ -262,7 +262,7 @@ class PeripheralsTable
                                         $availableMonitors = Component::where('componentable_type', 'App\Models\Monitor')
                                             ->where('status', 'Operativo')
                                             ->where(function ($query) use ($currentMonitorIds) {
-                                                $query->whereDoesntHave('peripherals')
+                                                $query->whereDoesntHave('peripheral')
                                                     ->orWhereIn('id', $currentMonitorIds);
                                             })
                                             ->get();
@@ -292,7 +292,7 @@ class PeripheralsTable
                                     
                                     $available = Component::where('componentable_type', 'App\Models\Keyboard')
                                         ->where('status', 'Operativo')
-                                        ->whereDoesntHave('peripherals')
+                                        ->whereDoesntHave('peripheral')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
                                             $kb = $component->componentable;
@@ -315,7 +315,7 @@ class PeripheralsTable
                                     
                                     $available = Component::where('componentable_type', 'App\Models\Mouse')
                                         ->where('status', 'Operativo')
-                                        ->whereDoesntHave('peripherals')
+                                        ->whereDoesntHave('peripheral')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
                                             $mouse = $component->componentable;
@@ -338,7 +338,7 @@ class PeripheralsTable
                                     
                                     $available = Component::where('componentable_type', 'App\Models\AudioDevice')
                                         ->where('status', 'Operativo')
-                                        ->whereDoesntHave('peripherals')
+                                        ->whereDoesntHave('peripheral')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
                                             $audio = $component->componentable;
@@ -383,7 +383,7 @@ class PeripheralsTable
                                     
                                     $available = Component::where('componentable_type', 'App\Models\Splitter')
                                         ->where('status', 'Operativo')
-                                        ->whereDoesntHave('peripherals')
+                                        ->whereDoesntHave('peripheral')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
                                             $split = $component->componentable;

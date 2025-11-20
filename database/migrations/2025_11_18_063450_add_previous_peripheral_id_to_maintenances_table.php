@@ -12,11 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('maintenances', function (Blueprint $table) {
-            $table->foreignId('workshop_location_id')
-                ->nullable()
-                ->after('requires_workshop')
-                ->constrained('locations')
-                ->onDelete('set null');
+            $table->foreignId('previous_peripheral_id')->nullable()->after('workshop_transfer_id')->constrained('peripherals')->nullOnDelete();
         });
     }
 
@@ -26,8 +22,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('maintenances', function (Blueprint $table) {
-            $table->dropForeign(['workshop_location_id']);
-            $table->dropColumn('workshop_location_id');
+            $table->dropForeign(['previous_peripheral_id']);
+            $table->dropColumn('previous_peripheral_id');
         });
     }
 };

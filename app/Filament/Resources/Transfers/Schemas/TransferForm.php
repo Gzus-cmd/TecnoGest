@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Transfers\Schemas;
 use App\Models\Computer;
 use App\Models\Printer;
 use App\Models\Projector;
+use App\Models\Peripheral;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\MorphToSelect;
 use Filament\Forms\Components\Select;
@@ -27,22 +28,25 @@ class TransferForm
             ->label($label)
             ->getSearchResultsUsing(function (string $search) use ($modelClass): array {
                 return $modelClass::query()
-                    ->where('serial', 'like', "%{$search}%")
-                    ->orWhereHas('location', function ($query) use ($search) {
-                        $query->where('pavilion', 'like', "%{$search}%")
-                            ->orWhere('name', 'like', "%{$search}%");
+                    ->whereIn('status', ['Activo', 'Inactivo'])
+                    ->where(function ($query) use ($search) {
+                        $query->where('serial', 'like', "%{$search}%")
+                            ->orWhereHas('location', function ($q) use ($search) {
+                                $q->where('pavilion', 'like', "%{$search}%")
+                                    ->orWhere('name', 'like', "%{$search}%");
+                            });
                     })
                     ->with('location')
                     ->limit(50)
                     ->get()
                     ->mapWithKeys(fn ($record) => [
-                        $record->getKey() => "{$record->serial} | {$record->location->pavilion} - {$record->location->name}"
+                        $record->getKey() => "{$record->serial} [{$record->status}] | {$record->location->pavilion} - {$record->location->name}"
                     ])
                     ->toArray();
             })
             ->getOptionLabelUsing(function ($value) use ($modelClass): ?string {
                 $record = $modelClass::with('location')->find($value);
-                return $record ? "{$record->serial} | {$record->location->pavilion} - {$record->location->name}" : null;
+                return $record ? "{$record->serial} [{$record->status}] | {$record->location->pavilion} - {$record->location->name}" : null;
             });
     }
 
@@ -58,6 +62,7 @@ class TransferForm
                                 self::makeSearchableDeviceType(Computer::class, 'Computadora'),
                                 self::makeSearchableDeviceType(Printer::class, 'Impresora'),
                                 self::makeSearchableDeviceType(Projector::class, 'Proyector'),
+                                self::makeSearchableDeviceType(Peripheral::class, 'Periférico'),
                             ])
                             ->label('Seleccionar Dispositivo')
                             ->searchable()

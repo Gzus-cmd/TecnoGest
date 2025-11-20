@@ -9,12 +9,12 @@ use App\Models\Location;
 use App\Models\Motherboard;
 use App\Models\RAM;
 use App\Models\ROM;
-use App\Models\Monitor;
-use App\Models\Keyboard;
-use App\Models\Mouse;
 use App\Models\NetworkAdapter;
 use App\Models\PowerSupply;
 use App\Models\TowerCase;
+use App\Models\Monitor;
+use App\Models\Keyboard;
+use App\Models\Mouse;
 use App\Models\AudioDevice;
 use App\Models\Stabilizer;
 use App\Models\Splitter;
@@ -477,227 +477,104 @@ class ComputerForm
                     ]),
 
                 Section::make('Periféricos')
-                    ->description('Periféricos asociados a la computadora')
+                    ->description('Componentes externos opcionales (Si no llena nada, solo se registrará la CPU)')
                     ->collapsible()
                     ->collapsed()
                     ->schema([
-                        Select::make('stabilizer_component_id')
-                            ->label('Estabilizador')
-                            ->options(function ($livewire) {
-                                $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
-                                    ? $livewire->getRecord() 
-                                    : null;
-                                
-                                $query = Component::where('componentable_type', 'App\Models\Stabilizer')
-                                    ->where('status', 'Operativo')
-                                    ->whereNull('output_date');
-                                
-                                // Los estabilizadores pueden estar asignados a múltiples dispositivos
-                                // No aplicamos whereDoesntHave para permitir reutilización
-                                
-                                return $query->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $stab = $component->componentable;
-                                        return [$component->id => "{$stab->brand} {$stab->model} - {$stab->capacity}VA - Serial: {$component->serial}"];
-                                    });
-                            })
-                            ->searchable()
-                            ->preload(),
-
                         Repeater::make('monitors')
                             ->label('Monitores')
                             ->schema([
                                 Select::make('component_id')
                                     ->label('Monitor')
-                                    ->options(function ($livewire) {
-                                        $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
-                                            ? $livewire->getRecord() 
-                                            : null;
-                                        
-                                        $query = Component::where('componentable_type', 'App\Models\Monitor')
+                                    ->options(function () {
+                                        return Component::where('componentable_type', 'App\Models\Monitor')
                                             ->where('status', 'Operativo')
-                                            ->whereNull('output_date');
-                                        
-                                        if ($currentRecord) {
-                                            // Si estamos editando, incluir componentes actuales O disponibles
-                                            $currentIds = $currentRecord->components()
-                                                ->where('components.componentable_type', 'App\Models\Monitor')
-                                                ->pluck('components.id')
-                                                ->toArray();
-                                            
-                                            $query->where(function ($q) use ($currentIds) {
-                                                $q->whereDoesntHave('computers')
-                                                    ->orWhereIn('id', $currentIds);
-                                            });
-                                        } else {
-                                            // Si estamos creando, solo mostrar disponibles
-                                            $query->whereDoesntHave('computers');
-                                        }
-                                        
-                                        return $query->get()
+                                            ->whereDoesntHave('peripheral')
+                                            ->get()
                                             ->mapWithKeys(function ($component) {
                                                 $monitor = $component->componentable;
-                                                return [$component->id => "{$monitor->brand} {$monitor->model} - {$monitor->size}\" - Serial: {$component->serial}"];
+                                                return [$component->id => "{$monitor->brand} {$monitor->model} - {$monitor->screen_size}\" - Serial: {$component->serial}"];
                                             });
                                     })
                                     ->searchable()
-                                    ->preload()
                                     ->required()
-                                    ->distinct()
-                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
+                                    ->distinct(),
                             ])
-                            ->minItems(0)
-                            ->maxItems(4)
                             ->addActionLabel('Agregar Monitor')
-                            ->collapsible(),
+                            ->collapsible()
+                            ->defaultItems(0),
 
-                        Select::make('keyboard_component_id')
-                            ->label('Teclado - Opcional')
-                            ->options(function ($livewire) {
-                                $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
-                                    ? $livewire->getRecord() 
-                                    : null;
-                                
-                                $query = Component::where('componentable_type', 'App\Models\Keyboard')
-                                    ->where('status', 'Operativo')
-                                    ->whereNull('output_date');
-                                
-                                if ($currentRecord) {
-                                    $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\Keyboard')
-                                        ->first()?->id;
-                                    
-                                    if ($currentId) {
-                                        $query->where(function ($q) use ($currentId) {
-                                            $q->whereDoesntHave('computers')
-                                                ->orWhere('id', $currentId);
+                        Grid::make(2)->schema([
+                            Select::make('keyboard_component_id')
+                                ->label('Teclado')
+                                ->options(function () {
+                                    return Component::where('componentable_type', 'App\Models\Keyboard')
+                                        ->where('status', 'Operativo')
+                                        ->whereDoesntHave('peripheral')
+                                        ->get()
+                                        ->mapWithKeys(function ($component) {
+                                            $kb = $component->componentable;
+                                            return [$component->id => "{$kb->brand} {$kb->model} - Serial: {$component->serial}"];
                                         });
-                                    } else {
-                                        $query->whereDoesntHave('computers');
-                                    }
-                                } else {
-                                    $query->whereDoesntHave('computers');
-                                }
-                                
-                                return $query->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $kb = $component->componentable;
-                                        return [$component->id => "{$kb->brand} {$kb->model} - Serial: {$component->serial}"];
-                                    });
-                            })
-                            ->searchable()
-                            ->preload(),
+                                })
+                                ->searchable(),
 
-                        Select::make('mouse_component_id')
-                            ->label('Ratón - Opcional')
-                            ->options(function ($livewire) {
-                                $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
-                                    ? $livewire->getRecord() 
-                                    : null;
-                                
-                                $query = Component::where('componentable_type', 'App\Models\Mouse')
-                                    ->where('status', 'Operativo')
-                                    ->whereNull('output_date');
-                                
-                                if ($currentRecord) {
-                                    $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\Mouse')
-                                        ->first()?->id;
-                                    
-                                    if ($currentId) {
-                                        $query->where(function ($q) use ($currentId) {
-                                            $q->whereDoesntHave('computers')
-                                                ->orWhere('id', $currentId);
+                            Select::make('mouse_component_id')
+                                ->label('Mouse')
+                                ->options(function () {
+                                    return Component::where('componentable_type', 'App\Models\Mouse')
+                                        ->where('status', 'Operativo')
+                                        ->whereDoesntHave('peripheral')
+                                        ->get()
+                                        ->mapWithKeys(function ($component) {
+                                            $mouse = $component->componentable;
+                                            return [$component->id => "{$mouse->brand} {$mouse->model} - Serial: {$component->serial}"];
                                         });
-                                    } else {
-                                        $query->whereDoesntHave('computers');
-                                    }
-                                } else {
-                                    $query->whereDoesntHave('computers');
-                                }
-                                
-                                return $query->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $mouse = $component->componentable;
-                                        return [$component->id => "{$mouse->brand} {$mouse->model} - Serial: {$component->serial}"];
-                                    });
-                            })
-                            ->searchable()
-                            ->preload(),
+                                })
+                                ->searchable(),
 
-                        Select::make('audio_device_component_id')
-                            ->label('Dispositivo de Audio - Opcional')
-                            ->options(function ($livewire) {
-                                $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
-                                    ? $livewire->getRecord() 
-                                    : null;
-                                
-                                $query = Component::where('componentable_type', 'App\Models\AudioDevice')
-                                    ->where('status', 'Operativo')
-                                    ->whereNull('output_date');
-                                
-                                if ($currentRecord) {
-                                    $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\AudioDevice')
-                                        ->first()?->id;
-                                    
-                                    if ($currentId) {
-                                        $query->where(function ($q) use ($currentId) {
-                                            $q->whereDoesntHave('computers')
-                                                ->orWhere('id', $currentId);
+                            Select::make('audio_component_id')
+                                ->label('Dispositivo de Audio')
+                                ->options(function () {
+                                    return Component::where('componentable_type', 'App\Models\AudioDevice')
+                                        ->where('status', 'Operativo')
+                                        ->whereDoesntHave('peripheral')
+                                        ->get()
+                                        ->mapWithKeys(function ($component) {
+                                            $audio = $component->componentable;
+                                            return [$component->id => "{$audio->brand} {$audio->model} ({$audio->type}) - Serial: {$component->serial}"];
                                         });
-                                    } else {
-                                        $query->whereDoesntHave('computers');
-                                    }
-                                } else {
-                                    $query->whereDoesntHave('computers');
-                                }
-                                
-                                return $query->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $ad = $component->componentable;
-                                        return [$component->id => "{$ad->brand} {$ad->model} - Serial: {$component->serial}"];
-                                    });
-                            })
-                            ->searchable()
-                            ->preload(),
+                                })
+                                ->searchable(),
 
-                        Select::make('splitter_component_id')
-                            ->label('Splitter - Opcional')
-                            ->options(function ($livewire) {
-                                $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
-                                    ? $livewire->getRecord() 
-                                    : null;
-                                
-                                $query = Component::where('componentable_type', 'App\Models\Splitter')
-                                    ->where('status', 'Operativo')
-                                    ->whereNull('output_date');
-                                
-                                if ($currentRecord) {
-                                    $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\Splitter')
-                                        ->first()?->id;
-                                    
-                                    if ($currentId) {
-                                        $query->where(function ($q) use ($currentId) {
-                                            $q->whereDoesntHave('computers')
-                                                ->orWhere('id', $currentId);
+                            Select::make('stabilizer_component_id')
+                                ->label('Estabilizador')
+                                ->options(function () {
+                                    return Component::where('componentable_type', 'App\Models\Stabilizer')
+                                        ->where('status', 'Operativo')
+                                        ->whereDoesntHave('peripheral')
+                                        ->get()
+                                        ->mapWithKeys(function ($component) {
+                                            $stab = $component->componentable;
+                                            return [$component->id => "{$stab->brand} {$stab->model} - {$stab->capacity}VA - Serial: {$component->serial}"];
                                         });
-                                    } else {
-                                        $query->whereDoesntHave('computers');
-                                    }
-                                } else {
-                                    $query->whereDoesntHave('computers');
-                                }
-                                
-                                return $query->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $sp = $component->componentable;
-                                        return [$component->id => "{$sp->brand} {$sp->model} - {$sp->ports} puertos - Serial: {$component->serial}"];
-                                    });
-                            })
-                            ->searchable()
-                            ->preload(),
+                                })
+                                ->searchable(),
+
+                            Select::make('splitter_component_id')
+                                ->label('Splitter')
+                                ->options(function () {
+                                    return Component::where('componentable_type', 'App\Models\Splitter')
+                                        ->where('status', 'Operativo')
+                                        ->whereDoesntHave('peripheral')
+                                        ->get()
+                                        ->mapWithKeys(function ($component) {
+                                            $splitter = $component->componentable;
+                                            return [$component->id => "{$splitter->brand} {$splitter->model} - {$splitter->ports} puertos - Serial: {$component->serial}"];
+                                        });
+                                })
+                                ->searchable(),
+                        ]),
                     ]),
             ]);
     }

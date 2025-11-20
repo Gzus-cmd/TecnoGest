@@ -83,21 +83,14 @@ class Maintenance extends Model
             // Cambiar dispositivo a "En Mantenimiento"
             $device->update(['status' => 'En Mantenimiento']);
             
-            // Si requiere taller Y es una computadora, desasignar periféricos
-            if ($this->requires_workshop && $device instanceof \App\Models\Computer) {
-                if ($device->peripheral_id) {
-                    $peripheral = $device->peripheral;
-                    $peripheral->update([
-                        'computer_id' => null,
-                        'status' => 'Activo' // Queda disponible
-                    ]);
-                    $device->update(['peripheral_id' => null]);
+            // Si requiere taller, ejecutar lógica de traslado
+            if ($this->requires_workshop) {
+                // Si es computadora, desasignar periféricos (quedan en ubicación original)
+                if ($device instanceof \App\Models\Computer) {
+                    $this->detachPeripheralsForWorkshop();
                 }
                 
                 // Crear traslado a taller
-                $this->createWorkshopTransfer();
-            } elseif ($this->requires_workshop) {
-                // Si requiere taller pero NO es computadora, solo crear traslado
                 $this->createWorkshopTransfer();
             }
         }
@@ -112,6 +105,33 @@ class Maintenance extends Model
                 $newStatus = $this->device_previous_status ?? 'Activo';
                 $device->update(['status' => $newStatus]);
             }
+        }
+    }
+
+    /**
+     * Desvincula los periféricos de la computadora cuando va al taller
+     * Los periféricos quedan en la ubicación original disponibles para reasignación
+     */
+    protected function detachPeripheralsForWorkshop(): void
+    {
+        $computer = $this->deviceable;
+        
+        if (!$computer instanceof \App\Models\Computer || !$computer->peripheral_id) {
+            return;
+        }
+
+        $peripheral = $computer->peripheral;
+        
+        if ($peripheral) {
+            // Desvincular ambas relaciones
+            $peripheral->update([
+                'computer_id' => null,
+                'status' => 'Activo' // Queda disponible para otra PC
+            ]);
+            
+            $computer->update(['peripheral_id' => null]);
+            
+            Log::info("Peripheral {$peripheral->code} desvinculado de Computer {$computer->serial} por mantenimiento en taller");
         }
     }
 
