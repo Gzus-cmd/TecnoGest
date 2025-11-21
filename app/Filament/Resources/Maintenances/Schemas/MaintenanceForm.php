@@ -119,7 +119,6 @@ class MaintenanceForm
                     ->schema([
                         Textarea::make('description')
                             ->label('Descripción del Mantenimiento')
-                            ->required()
                             ->placeholder('Describa el trabajo realizado...')
                             ->columnSpanFull(),
                     ]),
