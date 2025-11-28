@@ -23,6 +23,16 @@ class Status
     public const ASSIGNMENT_REMOVED = 'Removido';
     public const ASSIGNMENT_DISMANTLED = 'Desmantelado';
 
+    // Estados de Transfer
+    public const TRANSFER_PENDING = 'Pendiente';
+    public const TRANSFER_IN_PROGRESS = 'En Proceso';
+    public const TRANSFER_COMPLETED = 'Finalizado';
+
+    // Estados de Maintenance
+    public const MAINTENANCE_PENDING = 'Pendiente';
+    public const MAINTENANCE_IN_PROGRESS = 'En Proceso';
+    public const MAINTENANCE_COMPLETED = 'Finalizado';
+
     /**
      * Todos los estados de dispositivos
      */
@@ -57,6 +67,30 @@ class Status
             self::ASSIGNMENT_CURRENT,
             self::ASSIGNMENT_REMOVED,
             self::ASSIGNMENT_DISMANTLED,
+        ];
+    }
+
+    /**
+     * Todos los estados de transfer
+     */
+    public static function transferStatuses(): array
+    {
+        return [
+            self::TRANSFER_PENDING,
+            self::TRANSFER_IN_PROGRESS,
+            self::TRANSFER_COMPLETED,
+        ];
+    }
+
+    /**
+     * Todos los estados de maintenance
+     */
+    public static function maintenanceStatuses(): array
+    {
+        return [
+            self::MAINTENANCE_PENDING,
+            self::MAINTENANCE_IN_PROGRESS,
+            self::MAINTENANCE_COMPLETED,
         ];
     }
 

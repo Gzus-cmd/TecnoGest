@@ -41,14 +41,6 @@ class PeripheralsTable
                     ->default('Sin asignar')
                     ->badge()
                     ->color(fn ($state) => $state === 'Sin asignar' ? 'gray' : 'success'),
-                TextColumn::make('status')
-                    ->label('Estado')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Inactivo' => 'gray',
-                        'Activo' => 'success',
-                        'Desmantelado' => 'danger',
-                    }),
                 TextColumn::make('created_at')
                     ->label('Registrado')
                     ->dateTime()
@@ -61,13 +53,6 @@ class PeripheralsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('status')
-                    ->label('Estado')
-                    ->options([
-                        'Inactivo' => 'Inactivo',
-                        'Activo' => 'Activo',
-                        'Desmantelado' => 'Desmantelado',
-                    ]),
                 SelectFilter::make('location_id')
                     ->label('Ubicación')
                     ->relationship('location', 'name')
@@ -123,14 +108,6 @@ class PeripheralsTable
                                     TextEntry::make('computer.serial')
                                         ->label('Asignado a CPU')
                                         ->default('Sin asignar'),
-                                    TextEntry::make('status')
-                                        ->label('Estado')
-                                        ->badge()
-                                        ->color(fn (string $state): string => match ($state) {
-                                            'Inactivo' => 'gray',
-                                            'Activo' => 'success',
-                                            'Desmantelado' => 'danger',
-                                        }),
                                     TextEntry::make('notes')
                                         ->label('Notas')
                                         ->default('Sin notas')

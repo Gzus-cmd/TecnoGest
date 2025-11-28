@@ -129,7 +129,6 @@ class TransferForm
                     ->schema([
                         Textarea::make('reason')
                             ->label('Motivo')
-                            ->required()
                             ->placeholder('Describa el motivo del traslado...')
                             ->columnSpanFull(),
                     ]),

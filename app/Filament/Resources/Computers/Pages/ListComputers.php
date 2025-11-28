@@ -25,7 +25,8 @@ class ListComputers extends ListRecords
                 ->label('Registrar Computadora'),
             
             Action::make('preventive_maintenance')
-                ->label('Mantenimiento Preventivo')
+                ->visible(fn () => \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin')
+                ->label('Preventivo')
                 ->icon('heroicon-o-wrench-screwdriver')
                 ->color('warning')
                 ->requiresConfirmation()
@@ -69,7 +70,7 @@ class ListComputers extends ListRecords
                     Notification::make()
                         ->success()
                         ->title('Mantenimientos Registrados')
-                        ->body("Se registraron {$count} mantenimientos preventivos pendientes.")
+                        ->body("Se registraron {$count} mantenimientos de rutina pendientes.")
                         ->send();
                 })
                 ->modalSubmitActionLabel('Registrar Mantenimientos')

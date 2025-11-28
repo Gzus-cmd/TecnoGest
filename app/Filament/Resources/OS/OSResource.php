@@ -17,6 +17,7 @@ use UnitEnum;
 
 class OSResource extends Resource
 {
+
     protected static ?string $model = OS::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleGroup;

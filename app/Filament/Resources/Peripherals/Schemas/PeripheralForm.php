@@ -40,23 +40,29 @@ class PeripheralForm
                             
                             Select::make('computer_id')
                                 ->label('Asignado a CPU')
-                                ->options(Computer::with('location')->get()->mapWithKeys(function ($computer) {
-                                    $location = $computer->location ? " - {$computer->location->name}" : '';
-                                    return [$computer->id => "{$computer->serial}{$location}"];
-                                }))
+                                ->options(function ($record) {
+                                    $query = Computer::query();
+                                    
+                                    // Si estamos editando, incluir la computadora actual O disponibles
+                                    if ($record && $record->computer_id) {
+                                        $query->where(function ($q) use ($record) {
+                                            $q->whereNull('peripheral_id')
+                                              ->orWhere('id', $record->computer_id);
+                                        });
+                                    } else {
+                                        // Si estamos creando, solo disponibles
+                                        $query->whereNull('peripheral_id');
+                                    }
+                                    
+                                    return $query->with('location')->get()->mapWithKeys(function ($computer) use ($record) {
+                                        $location = $computer->location ? " - {$computer->location->name}" : '';
+                                        return [$computer->id => "{$computer->serial}{$location}"];
+                                    });
+                                })
                                 ->searchable()
                                 ->nullable()
-                                ->helperText('CPU al que está asignado (opcional)'),
-                            
-                            Select::make('status')
-                                ->label('Estado')
-                                ->options([
-                                    'Activo' => 'Activo',
-                                    'Inactivo' => 'Inactivo',
-                                    'Desmantelado' => 'Desmantelado',
-                                ])
-                                ->required()
-                                ->default('Activo'),
+                                ->placeholder('Sin asignar')
+                                ->helperText('Seleccione una computadora disponible'),
                         ]),
                         
                         Textarea::make('notes')

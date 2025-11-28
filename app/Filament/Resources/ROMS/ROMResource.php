@@ -17,6 +17,7 @@ use UnitEnum;
 
 class ROMResource extends Resource
 {
+
     protected static ?string $model = ROM::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedServer;

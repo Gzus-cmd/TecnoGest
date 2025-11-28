@@ -50,9 +50,14 @@ class LatestMaintenances extends BaseWidget
                 TextColumn::make('type')
                     ->label('Tipo de Mantenimiento')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'Preventivo' => 'Preventivo',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'Preventivo' => 'success',
                         'Correctivo' => 'danger',
+                        default => 'gray',
                     }),
                 
                 TextColumn::make('status')
@@ -64,7 +69,7 @@ class LatestMaintenances extends BaseWidget
                         'Finalizado' => 'success',
                     }),
                 
-                TextColumn::make('user.name')
+                TextColumn::make('registeredBy.name')
                     ->label('Técnico')
                     ->searchable(),
                 

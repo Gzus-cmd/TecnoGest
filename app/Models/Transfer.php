@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Constants\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,7 +31,7 @@ class Transfer extends Model
             }
             
             // Validar que el dispositivo no esté desmantelado
-            if ($transfer->deviceable && $transfer->deviceable->status === 'Desmantelado') {
+            if ($transfer->deviceable && $transfer->deviceable->status === Status::DEVICE_DISMANTLED) {
                 throw new \Exception('No se puede trasladar un dispositivo desmantelado');
             }
             
@@ -70,17 +71,17 @@ class Transfer extends Model
         $device = $this->deviceable;
         
         if ($device && $this->destiny_id && 
-            $this->status === 'Finalizado' && 
+            $this->status === Status::TRANSFER_COMPLETED && 
             $this->wasChanged('status')) {
             $device->update(['location_id' => $this->destiny_id]);
             
             // Si el dispositivo está Inactivo y sale de un taller
-            if ($device->status === 'Inactivo') {
+            if ($device->status === Status::DEVICE_INACTIVE) {
                 $origin = $this->origin;
                 
                 // Verificar si el origen es un taller/área de informática
                 if ($origin && $origin->is_workshop) {
-                    $device->update(['status' => 'Activo']);
+                    $device->update(['status' => Status::DEVICE_ACTIVE]);
                 }
             }
         }

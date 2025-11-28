@@ -17,6 +17,7 @@ use UnitEnum;
 
 class LocationResource extends Resource
 {
+
     protected static ?string $model = Location::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMapPin;

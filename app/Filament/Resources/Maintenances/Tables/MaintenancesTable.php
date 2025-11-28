@@ -42,9 +42,14 @@ class MaintenancesTable
                 TextColumn::make('type')
                     ->label('Tipo de Mantenimiento')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'Preventivo' => 'Preventivo',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'Preventivo' => 'warning',
                         'Correctivo' => 'danger',
+                        default => 'gray',
                     }),
                 TextColumn::make('status')
                     ->label('Estado')

@@ -17,6 +17,7 @@ use UnitEnum;
 
 class ProviderResource extends Resource
 {
+
     protected static ?string $model = Provider::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;

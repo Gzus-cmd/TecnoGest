@@ -205,6 +205,7 @@ class ComponentsTable
             ])
             ->toolbarActions([
                 \Filament\Actions\Action::make('exportExcel')
+                    ->visible(fn () => \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin')
                     ->label('Exportar Excel')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
@@ -224,6 +225,7 @@ class ComponentsTable
                     }),
                 
                 \Filament\Actions\Action::make('exportCsv')
+                    ->visible(fn () => \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin')
                     ->label('Exportar CSV')
                     ->icon('heroicon-o-document-text')
                     ->color('info')
@@ -244,6 +246,7 @@ class ComponentsTable
                 
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->visible(fn () => \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin')
                         ->label('Eliminar'),
                 ])->label('Acciones en Lote'),
             ])

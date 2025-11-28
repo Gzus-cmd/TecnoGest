@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Constants\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -39,7 +40,7 @@ class Maintenance extends Model
             
             // Validar que el dispositivo esté Activo o Inactivo
             if ($maintenance->deviceable && 
-                !in_array($maintenance->deviceable->status, ['Activo', 'Inactivo'])) {
+                !in_array($maintenance->deviceable->status, [Status::DEVICE_ACTIVE, Status::DEVICE_INACTIVE])) {
                 throw new \Exception('Solo se puede crear mantenimiento para dispositivos Activos o Inactivos');
             }
         });
@@ -51,7 +52,7 @@ class Maintenance extends Model
             }
             
             // Si cambió el status, guardar el estado anterior del dispositivo
-            if ($maintenance->isDirty('status') && $maintenance->status === 'En Proceso') {
+            if ($maintenance->isDirty('status') && $maintenance->status === Status::MAINTENANCE_IN_PROGRESS) {
                 $device = $maintenance->deviceable;
                 if ($device && !$maintenance->device_previous_status) {
                     $maintenance->device_previous_status = $device->status;
@@ -79,9 +80,9 @@ class Maintenance extends Model
         }
 
         // Cuando el mantenimiento pasa a "En Proceso"
-        if ($this->status === 'En Proceso') {
+        if ($this->status === Status::MAINTENANCE_IN_PROGRESS) {
             // Cambiar dispositivo a "En Mantenimiento"
-            $device->update(['status' => 'En Mantenimiento']);
+            $device->update(['status' => Status::DEVICE_MAINTENANCE]);
             
             // Si requiere taller, ejecutar lógica de traslado
             if ($this->requires_workshop) {
@@ -96,13 +97,13 @@ class Maintenance extends Model
         }
 
         // Cuando el mantenimiento es finalizado
-        if ($this->status === 'Finalizado') {
+        if ($this->status === Status::MAINTENANCE_COMPLETED) {
             if ($this->requires_workshop) {
                 // Si fue al taller, queda Inactivo hasta que regresen el dispositivo
-                $device->update(['status' => 'Inactivo']);
+                $device->update(['status' => Status::DEVICE_INACTIVE]);
             } else {
                 // Si no fue al taller, restaurar estado anterior o Activo
-                $newStatus = $this->device_previous_status ?? 'Activo';
+                $newStatus = $this->device_previous_status ?? Status::DEVICE_ACTIVE;
                 $device->update(['status' => $newStatus]);
             }
         }
@@ -123,12 +124,8 @@ class Maintenance extends Model
         $peripheral = $computer->peripheral;
         
         if ($peripheral) {
-            // Desvincular ambas relaciones
-            $peripheral->update([
-                'computer_id' => null,
-                'status' => 'Activo' // Queda disponible para otra PC
-            ]);
-            
+            // Desvincular ambas relaciones (el periférico queda disponible)
+            $peripheral->update(['computer_id' => null]);
             $computer->update(['peripheral_id' => null]);
             
             Log::info("Peripheral {$peripheral->code} desvinculado de Computer {$computer->serial} por mantenimiento en taller");
@@ -137,6 +134,8 @@ class Maintenance extends Model
 
     /**
      * Crea un traslado al taller de informática
+     * IMPORTANTE: Crea el traslado como Pendiente, luego En Proceso, y finalmente Finalizado
+     * para que el observer de Transfer actualice correctamente la ubicación del dispositivo
      */
     protected function createWorkshopTransfer(): void
     {
@@ -151,6 +150,7 @@ class Maintenance extends Model
             return;
         }
 
+        // Crear traslado como Pendiente
         $transfer = Transfer::create([
             'deviceable_type' => $this->deviceable_type,
             'deviceable_id' => $this->deviceable_id,
@@ -159,8 +159,14 @@ class Maintenance extends Model
             'destiny_id' => $workshopLocationId,
             'date' => now(),
             'reason' => "Traslado a taller por mantenimiento {$this->type} - ID: {$this->id}",
-            'status' => 'Finalizado',
+            'status' => Status::TRANSFER_PENDING,
         ]);
+
+        // Cambiar a En Proceso
+        $transfer->update(['status' => Status::TRANSFER_IN_PROGRESS]);
+        
+        // Cambiar a Finalizado - esto dispara el observer que actualiza la ubicación
+        $transfer->update(['status' => Status::TRANSFER_COMPLETED]);
 
         // Actualizar sin disparar eventos para evitar recursión
         $this->updateQuietly(['workshop_transfer_id' => $transfer->id]);

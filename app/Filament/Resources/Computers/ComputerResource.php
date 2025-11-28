@@ -19,6 +19,7 @@ use UnitEnum;
 
 class ComputerResource extends Resource
 {
+
     protected static ?string $model = Computer::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedComputerDesktop;

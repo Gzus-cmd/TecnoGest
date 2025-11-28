@@ -32,7 +32,7 @@ class TransfersTable
                             return 'Computadora';
                         } elseif (str_contains($state, 'Printer')) {
                             return 'Impresora';
-                        } elseif (str_contains($state, 'Proyector')) {
+                        } elseif (str_contains($state, 'Projector')) {
                             return 'Proyector';
                         }
                         return $state;

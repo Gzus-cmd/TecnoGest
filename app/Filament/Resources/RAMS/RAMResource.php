@@ -17,6 +17,7 @@ use UnitEnum;
 
 class RAMResource extends Resource
 {
+
     protected static ?string $model = RAM::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFilm;

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Constants\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -13,9 +14,54 @@ class Peripheral extends Model
         'code',
         'location_id',
         'computer_id',
-        'status',
         'notes',
     ];
+
+    protected static function booted(): void
+    {
+        // Validación al asignar a una computadora
+        static::updating(function (Peripheral $peripheral) {
+            if ($peripheral->isDirty('computer_id') && $peripheral->computer_id) {
+                $computer = Computer::find($peripheral->computer_id);
+                
+                if (!$computer) {
+                    throw new \Exception('La computadora seleccionada no existe');
+                }
+                
+                if ($computer->peripheral_id && $computer->peripheral_id !== $peripheral->id) {
+                    throw new \Exception('La computadora ya tiene un periférico asignado');
+                }
+            }
+        });
+        
+        // Sincronización bidireccional Peripheral ↔ Computer
+        static::updated(function (Peripheral $peripheral) {
+            if ($peripheral->wasChanged('computer_id')) {
+                // Asignar la computadora nueva
+                if ($peripheral->computer_id) {
+                    $computer = Computer::find($peripheral->computer_id);
+                    if ($computer && $computer->peripheral_id !== $peripheral->id) {
+                        $computer->updateQuietly(['peripheral_id' => $peripheral->id]);
+                    }
+                }
+                
+                // Liberar la computadora anterior
+                $oldComputerId = $peripheral->getOriginal('computer_id');
+                if ($oldComputerId && $oldComputerId !== $peripheral->computer_id) {
+                    $oldComputer = Computer::find($oldComputerId);
+                    if ($oldComputer && $oldComputer->peripheral_id === $peripheral->id) {
+                        $oldComputer->updateQuietly(['peripheral_id' => null]);
+                    }
+                }
+            }
+        });
+
+        // Eliminación en cascada
+        static::deleting(function (Peripheral $peripheral) {
+            // Desvincular componentes
+            $peripheral->components()->detach();
+        });
+    }
 
     public function location(): BelongsTo
     {

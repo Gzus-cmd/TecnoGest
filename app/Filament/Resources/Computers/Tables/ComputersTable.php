@@ -96,332 +96,114 @@ class ComputersTable
 
             ])
             ->recordActions([
-                Action::make('verComponentes')
-                    ->label('Ver')
-                    ->icon('heroicon-o-eye')
+                Action::make('asignarPeriferico')
+                    ->label('Asignar')
+                    ->icon('heroicon-o-computer-desktop')
                     ->color('success')
-                    ->modalHeading('Detalles de la Computadora')
-                    ->modalWidth('6xl')
-                    ->modalSubmitAction(false)
-                    ->infolist(function ($record) {
-                        // Cargar componentes con sus relaciones
-                        $record->load(['components.componentable', 'os', 'peripheral.components.componentable']);
+                    ->visible(fn ($record) => $record->peripheral_id === null && in_array($record->status, ['Activo', 'Inactivo']))
+                    ->modalHeading('Asignar Periférico a Computadora')
+                    ->modalDescription(fn ($record) => "Seleccione un periférico disponible para asignar a {$record->serial}. La computadora se trasladará a la ubicación del periférico y ambos se activarán.")
+                    ->modalWidth('md')
+                    ->modalSubmitActionLabel('Asignar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->form([
+                        Select::make('peripheral_id')
+                            ->label('Periférico Disponible')
+                            ->options(function ($record) {
+                                // Solo periféricos SIN PC asignada
+                                return \App\Models\Peripheral::whereNull('computer_id')
+                                    ->with(['components.componentable', 'location'])
+                                    ->get()
+                                    ->mapWithKeys(function ($peripheral) {
+                                        $locationName = $peripheral->location ? $peripheral->location->name : 'Sin ubicación';
+                                        return [$peripheral->id => "{$peripheral->code} | {$locationName}"];
+                                    });
+                            })
+                            ->searchable()
+                            ->required()
+                            ->helperText('Solo se muestran periféricos inactivos sin PC asignada'),
+                    ])
+                    ->action(function ($record, array $data): void {
+                        $peripheral = \App\Models\Peripheral::find($data['peripheral_id']);
                         
-                        // Componentes internos del CPU
-                        $motherboard = $record->components->firstWhere('componentable_type', 'App\Models\Motherboard');
-                        $cpu = $record->components->firstWhere('componentable_type', 'App\Models\CPU');
-                        $gpu = $record->components->firstWhere('componentable_type', 'App\Models\GPU');
-                        $powerSupply = $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply');
-                        $towerCase = $record->components->firstWhere('componentable_type', 'App\Models\TowerCase');
-                        $networkAdapter = $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter');
-                        $rams = $record->components->where('componentable_type', 'App\Models\RAM');
-                        $roms = $record->components->where('componentable_type', 'App\Models\ROM');
+                        if (!$peripheral) {
+                            Notification::make()
+                                ->title('Error')
+                                ->danger()
+                                ->body('Periférico no encontrado.')
+                                ->send();
+                            return;
+                        }
+
+                        DB::transaction(function () use ($record, $peripheral) {
+                            $originalComputerLocation = $record->location_id;
+                            
+                            // Mover LA PC a la ubicación del periférico (no al revés)
+                            $record->update([
+                                'location_id' => $peripheral->location_id,
+                                'peripheral_id' => $peripheral->id,
+                                'status' => 'Activo', // Ambos se activan
+                            ]);
+                            
+                            // Activar periférico y asignar PC
+                            $peripheral->update([
+                                'computer_id' => $record->id,
+                                'status' => 'Activo', // Ambos se activan
+                            ]);
+
+                            // Crear registro de traslado de la PC (si cambió de ubicación)
+                            if ($originalComputerLocation != $peripheral->location_id) {
+                                \App\Models\Transfer::create([
+                                    'deviceable_type' => \App\Models\Computer::class,
+                                    'deviceable_id' => $record->id,
+                                    'registered_by' => Auth::id(),
+                                    'origin_id' => $originalComputerLocation,
+                                    'destiny_id' => $peripheral->location_id,
+                                    'date' => now()->format('Y-m-d'),
+                                    'reason' => "Traslado para asignación con periférico {$peripheral->code}",
+                                    'status' => 'Finalizado',
+                                ]);
+                            }
+                        });
+
+                        Notification::make()
+                            ->title('Periférico asignado')
+                            ->success()
+                            ->body("El periférico {$peripheral->code} ha sido asignado a {$record->serial}. Ambos están ahora activos en {$peripheral->location->name}.")
+                            ->send();
+                    }),
+
+                Action::make('desmantelar')
+                    ->label('Desmantelar')
+                    ->icon('heroicon-o-wrench-screwdriver')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Desmantelar Computadora')
+                    ->modalDescription(fn ($record) => "¿Está seguro de desmantelar la computadora {$record->serial}? Todos los componentes vigentes serán removidos y la computadora pasará al estado 'Desmantelado'.")
+                    ->modalSubmitActionLabel('Sí, desmantelar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->visible(fn ($record) => $record->status === 'Inactivo')
+                    ->action(function ($record) {
+                        DB::transaction(function () use ($record) {
+                            // Actualizar todos los componentes vigentes a "Removido"
+                            DB::table('componentables')
+                                ->where('componentable_type', 'App\\Models\\Computer')
+                                ->where('componentable_id', $record->id)
+                                ->where('status', 'Vigente')
+                                ->update([
+                                    'status' => 'Removido',
+                                    'updated_at' => now()
+                                ]);
+                            
+                            // Cambiar el estado de la computadora a Desmantelado
+                            $record->update(['status' => 'Desmantelado']);
+                        });
                         
-                        // Componentes periféricos (ahora desde peripheral)
-                        $peripheral = $record->peripheral;
-                        $keyboard = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Keyboard');
-                        $mouse = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Mouse');
-                        $audioDevice = $peripheral?->components->firstWhere('componentable_type', 'App\Models\AudioDevice');
-                        $stabilizer = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Stabilizer');
-                        $splitter = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Splitter');
-                        $monitors = $peripheral?->components->where('componentable_type', 'App\Models\Monitor') ?? collect();
-
-                        return [
-                            // SECCIÓN: SOFTWARE Y RED
-                            ViewEntry::make('software_header')
-                                ->view('filament.infolists.section-header', [
-                                    'title' => '💻 Software y Red',
-                                    'gradient' => 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                    'textColor' => 'white'
-                                ])
-                                ->columnSpanFull(),
-                            
-                            Section::make()
-                                ->schema([
-                                    TextEntry::make('os_info')
-                                        ->label('Sistema Operativo')
-                                        ->state(function () use ($record) {
-                                            if (!$record->os) return 'No asignado';
-                                            $os = $record->os;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Nombre:</span> <span style='color: #9ca3af;'>{$os->name}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Versión:</span> <span style='color: #9ca3af;'>" . ($os->version ?? 'N/A') . "</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Arquitectura:</span> <span style='color: #9ca3af;'>" . ($os->architecture ?? 'N/A') . "</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Licencia:</span> <span style='color: #9ca3af;'>" . ($os->license_key ?? 'N/A') . "</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('ip_address')
-                                        ->label('Dirección IP')
-                                        ->state(function () use ($record) {
-                                            return "<span style='color: #9ca3af;'>" . ($record->ip_address ?? 'No asignada') . "</span>";
-                                        })
-                                        ->html(),
-                                    
-                                    TextEntry::make('peripheral_info')
-                                        ->label('Periféricos Asignados')
-                                        ->state(function () use ($peripheral) {
-                                            if (!$peripheral) return "<span style='color: #9ca3af;'>Sin periféricos asignados</span>";
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div><span style='font-weight: 700; color: #10b981;'>Código:</span> <span style='color: #9ca3af;'>{$peripheral->code}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$peripheral->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-                                ])
-                                ->columns(2),
-
-                            // SECCIÓN: HARDWARE PRINCIPAL
-                            ViewEntry::make('hardware_header')
-                                ->view('filament.infolists.section-header', [
-                                    'title' => '🔧 Hardware Principal',
-                                    'gradient' => 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                                    'textColor' => 'white'
-                                ])
-                                ->columnSpanFull(),
-                            
-                            Section::make()
-                                ->schema([
-                                    TextEntry::make('motherboard_info')
-                                        ->label('Placa Base')
-                                        ->state(function () use ($motherboard) {
-                                            if (!$motherboard) return '<span style="color: #9ca3af;">No asignada</span>';
-                                            $mb = $motherboard->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$mb->brand} {$mb->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Socket:</span> <span style='color: #9ca3af;'>{$mb->socket}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$motherboard->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$motherboard->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('cpu_info')
-                                        ->label('Procesador (CPU)')
-                                        ->state(function () use ($cpu) {
-                                            if (!$cpu) return '<span style="color: #9ca3af;">No asignado</span>';
-                                            $c = $cpu->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$c->brand} {$c->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Socket:</span> <span style='color: #9ca3af;'>{$c->socket}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Frecuencia:</span> <span style='color: #9ca3af;'>{$c->frequency} GHz</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Núcleos:</span> <span style='color: #9ca3af;'>{$c->cores}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$cpu->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$cpu->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('gpu_info')
-                                        ->label('Tarjeta Gráfica (GPU)')
-                                        ->state(function () use ($gpu) {
-                                            if (!$gpu) return '<span style="color: #9ca3af;">No asignada</span>';
-                                            $g = $gpu->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$g->brand} {$g->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>VRAM:</span> <span style='color: #9ca3af;'>{$g->vram} GB</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$gpu->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$gpu->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('power_supply_info')
-                                        ->label('Fuente de Poder')
-                                        ->state(function () use ($powerSupply) {
-                                            if (!$powerSupply) return '<span style="color: #9ca3af;">No asignada</span>';
-                                            $ps = $powerSupply->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$ps->brand} {$ps->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Potencia:</span> <span style='color: #9ca3af;'>{$ps->power} W</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$powerSupply->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$powerSupply->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('tower_case_info')
-                                        ->label('Gabinete/Case')
-                                        ->state(function () use ($towerCase) {
-                                            if (!$towerCase) return '<span style="color: #9ca3af;">No asignado</span>';
-                                            $tc = $towerCase->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$tc->brand} {$tc->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$towerCase->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$towerCase->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('network_adapter_info')
-                                        ->label('Adaptador de Red')
-                                        ->state(function () use ($networkAdapter) {
-                                            if (!$networkAdapter) return '<span style="color: #9ca3af;">No asignado</span>';
-                                            $na = $networkAdapter->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$na->brand} {$na->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$networkAdapter->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$networkAdapter->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-                                ])
-                                ->columns(3),
-
-                            // SECCIÓN: MEMORIA Y ALMACENAMIENTO
-                            ViewEntry::make('memoria_header')
-                                ->view('filament.infolists.section-header', [
-                                    'title' => '💾 Memoria y Almacenamiento',
-                                    'gradient' => 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-                                    'textColor' => '#1f2937'
-                                ])
-                                ->columnSpanFull(),
-                            
-                            Section::make()
-                                ->schema([
-                                    TextEntry::make('rams_info')
-                                        ->label('Memorias RAM')
-                                        ->state(function () use ($rams) {
-                                            if ($rams->isEmpty()) return '<span style="color: #9ca3af;">No hay memorias RAM asignadas</span>';
-                                            return $rams->map(function ($ram, $index) {
-                                                $r = $ram->componentable;
-                                                $num = $index + 1;
-                                                return "<div style='margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #6366f1;'>" .
-                                                       "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>RAM #{$num}: {$r->brand} {$r->model}</div>" .
-                                                       "<div style='line-height: 1.6;'>" .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Capacidad:</span> <span style='color: #9ca3af;'>{$r->capacity} GB</span> | " .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Tipo:</span> <span style='color: #9ca3af;'>{$r->type}</span> | " .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Frecuencia:</span> <span style='color: #9ca3af;'>{$r->frequency} MHz</span><br>" .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$ram->serial}</span> | " .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$ram->status}</span>" .
-                                                       "</div></div>";
-                                            })->join('');
-                                        })
-                                        ->html()
-                                        ->columnSpanFull(),
-
-                                    TextEntry::make('roms_info')
-                                        ->label('Almacenamiento (ROMs)')
-                                        ->state(function () use ($roms) {
-                                            if ($roms->isEmpty()) return '<span style="color: #9ca3af;">No hay almacenamiento asignado</span>';
-                                            return $roms->map(function ($rom, $index) {
-                                                $r = $rom->componentable;
-                                                $num = $index + 1;
-                                                return "<div style='margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #8b5cf6;'>" .
-                                                       "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>Almacenamiento #{$num}: {$r->brand} {$r->model}</div>" .
-                                                       "<div style='line-height: 1.6;'>" .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Capacidad:</span> <span style='color: #9ca3af;'>{$r->capacity} GB</span> | " .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Tipo:</span> <span style='color: #9ca3af;'>{$r->type}</span><br>" .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$rom->serial}</span> | " .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$rom->status}</span>" .
-                                                       "</div></div>";
-                                            })->join('');
-                                        })
-                                        ->html()
-                                        ->columnSpanFull(),
-                                ])
-                                ->columns(2),
-
-                            // SECCIÓN: PERIFÉRICOS
-                            ViewEntry::make('perifericos_header')
-                                ->view('filament.infolists.section-header', [
-                                    'title' => '🖥️ Periféricos',
-                                    'gradient' => 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                                    'textColor' => 'white'
-                                ])
-                                ->columnSpanFull(),
-                            
-                            Section::make()
-                                ->schema([
-                                    TextEntry::make('monitors_info')
-                                        ->label('Monitores')
-                                        ->state(function () use ($monitors) {
-                                            if ($monitors->isEmpty()) return '<span style="color: #9ca3af;">No hay monitores asignados</span>';
-                                            return $monitors->map(function ($monitor, $index) {
-                                                $m = $monitor->componentable;
-                                                $num = $index + 1;
-                                                return "<div style='margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #10b981;'>" .
-                                                       "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>Monitor #{$num}: {$m->brand} {$m->model}</div>" .
-                                                       "<div style='line-height: 1.6;'>" .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Tamaño:</span> <span style='color: #9ca3af;'>{$m->screen_size} pulgadas</span><br>" .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$monitor->serial}</span> | " .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$monitor->status}</span>" .
-                                                       "</div></div>";
-                                            })->join('');
-                                        })
-                                        ->html()
-                                        ->columnSpanFull(),
-
-                                    TextEntry::make('keyboard_info')
-                                        ->label('Teclado')
-                                        ->state(function () use ($keyboard) {
-                                            if (!$keyboard) return '<span style="color: #9ca3af;">No asignado</span>';
-                                            $kb = $keyboard->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$kb->brand} {$kb->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$keyboard->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$keyboard->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('mouse_info')
-                                        ->label('Mouse')
-                                        ->state(function () use ($mouse) {
-                                            if (!$mouse) return '<span style="color: #9ca3af;">No asignado</span>';
-                                            $m = $mouse->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$m->brand} {$m->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$mouse->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$mouse->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('audio_device_info')
-                                        ->label('Dispositivo de Audio')
-                                        ->state(function () use ($audioDevice) {
-                                            if (!$audioDevice) return '<span style="color: #9ca3af;">No asignado</span>';
-                                            $ad = $audioDevice->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$ad->brand} {$ad->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$audioDevice->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$audioDevice->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('stabilizer_info')
-                                        ->label('Estabilizador')
-                                        ->state(function () use ($stabilizer) {
-                                            if (!$stabilizer) return '<span style="color: #9ca3af;">No asignado</span>';
-                                            $st = $stabilizer->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$st->brand} {$st->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Potencia:</span> <span style='color: #9ca3af;'>{$st->power} VA</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$stabilizer->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$stabilizer->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-
-                                    TextEntry::make('splitter_info')
-                                        ->label('Multicontacto/Splitter')
-                                        ->state(function () use ($splitter) {
-                                            if (!$splitter) return '<span style="color: #9ca3af;">No asignado</span>';
-                                            $sp = $splitter->componentable;
-                                            return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$sp->brand} {$sp->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Número de Tomas:</span> <span style='color: #9ca3af;'>{$sp->outlets}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$splitter->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$splitter->status}</span></div>" .
-                                                   "</div>";
-                                        })
-                                        ->html(),
-                                ])
-                                ->columns(3),
-                        ];
+                        Notification::make()
+                            ->title('Computadora desmantelada')
+                            ->success()
+                            ->body("La computadora {$record->serial} ha sido desmantelada exitosamente.")
+                            ->send();
                     }),
 
                 Action::make('actualizarSistema')
@@ -1123,6 +905,333 @@ class ComputersTable
                             ->send();
                     }),
 
+                Action::make('verComponentes')
+                    ->label('Ver')
+                    ->icon('heroicon-o-eye')
+                    ->color('success')
+                    ->modalHeading('Detalles de la Computadora')
+                    ->modalWidth('6xl')
+                    ->modalSubmitAction(false)
+                    ->infolist(function ($record) {
+                        // Cargar componentes con sus relaciones
+                        $record->load(['components.componentable', 'os', 'peripheral.components.componentable']);
+                        
+                        // Componentes internos del CPU
+                        $motherboard = $record->components->firstWhere('componentable_type', 'App\Models\Motherboard');
+                        $cpu = $record->components->firstWhere('componentable_type', 'App\Models\CPU');
+                        $gpu = $record->components->firstWhere('componentable_type', 'App\Models\GPU');
+                        $powerSupply = $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply');
+                        $towerCase = $record->components->firstWhere('componentable_type', 'App\Models\TowerCase');
+                        $networkAdapter = $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter');
+                        $rams = $record->components->where('componentable_type', 'App\Models\RAM');
+                        $roms = $record->components->where('componentable_type', 'App\Models\ROM');
+                        
+                        // Componentes periféricos (ahora desde peripheral)
+                        $peripheral = $record->peripheral;
+                        $keyboard = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Keyboard');
+                        $mouse = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Mouse');
+                        $audioDevice = $peripheral?->components->firstWhere('componentable_type', 'App\Models\AudioDevice');
+                        $stabilizer = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Stabilizer');
+                        $splitter = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Splitter');
+                        $monitors = $peripheral?->components->where('componentable_type', 'App\Models\Monitor') ?? collect();
+
+                        return [
+                            // SECCIÓN: SOFTWARE Y RED
+                            ViewEntry::make('software_header')
+                                ->view('filament.infolists.section-header', [
+                                    'title' => '💻 Software y Red',
+                                    'gradient' => 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    'textColor' => 'white'
+                                ])
+                                ->columnSpanFull(),
+                            
+                            Section::make()
+                                ->schema([
+                                    TextEntry::make('os_info')
+                                        ->label('Sistema Operativo')
+                                        ->state(function () use ($record) {
+                                            if (!$record->os) return 'No asignado';
+                                            $os = $record->os;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Nombre:</span> <span style='color: #9ca3af;'>{$os->name}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Versión:</span> <span style='color: #9ca3af;'>" . ($os->version ?? 'N/A') . "</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Arquitectura:</span> <span style='color: #9ca3af;'>" . ($os->architecture ?? 'N/A') . "</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Licencia:</span> <span style='color: #9ca3af;'>" . ($os->license_key ?? 'N/A') . "</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('ip_address')
+                                        ->label('Dirección IP')
+                                        ->state(function () use ($record) {
+                                            return "<span style='color: #9ca3af;'>" . ($record->ip_address ?? 'No asignada') . "</span>";
+                                        })
+                                        ->html(),
+                                    
+                                    TextEntry::make('peripheral_info')
+                                        ->label('Periféricos Asignados')
+                                        ->state(function () use ($peripheral) {
+                                            if (!$peripheral) return "<span style='color: #9ca3af;'>Sin periféricos asignados</span>";
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div><span style='font-weight: 700; color: #10b981;'>Código:</span> <span style='color: #9ca3af;'>{$peripheral->code}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+                                ])
+                                ->columns(2),
+
+                            // SECCIÓN: HARDWARE PRINCIPAL
+                            ViewEntry::make('hardware_header')
+                                ->view('filament.infolists.section-header', [
+                                    'title' => '🔧 Hardware Principal',
+                                    'gradient' => 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                                    'textColor' => 'white'
+                                ])
+                                ->columnSpanFull(),
+                            
+                            Section::make()
+                                ->schema([
+                                    TextEntry::make('motherboard_info')
+                                        ->label('Placa Base')
+                                        ->state(function () use ($motherboard) {
+                                            if (!$motherboard) return '<span style="color: #9ca3af;">No asignada</span>';
+                                            $mb = $motherboard->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$mb->brand} {$mb->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Socket:</span> <span style='color: #9ca3af;'>{$mb->socket}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$motherboard->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$motherboard->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('cpu_info')
+                                        ->label('Procesador (CPU)')
+                                        ->state(function () use ($cpu) {
+                                            if (!$cpu) return '<span style="color: #9ca3af;">No asignado</span>';
+                                            $c = $cpu->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$c->brand} {$c->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Socket:</span> <span style='color: #9ca3af;'>{$c->socket}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Frecuencia:</span> <span style='color: #9ca3af;'>{$c->frequency} GHz</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Núcleos:</span> <span style='color: #9ca3af;'>{$c->cores}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$cpu->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$cpu->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('gpu_info')
+                                        ->label('Tarjeta Gráfica (GPU)')
+                                        ->state(function () use ($gpu) {
+                                            if (!$gpu) return '<span style="color: #9ca3af;">No asignada</span>';
+                                            $g = $gpu->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$g->brand} {$g->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>VRAM:</span> <span style='color: #9ca3af;'>{$g->vram} GB</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$gpu->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$gpu->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('power_supply_info')
+                                        ->label('Fuente de Poder')
+                                        ->state(function () use ($powerSupply) {
+                                            if (!$powerSupply) return '<span style="color: #9ca3af;">No asignada</span>';
+                                            $ps = $powerSupply->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$ps->brand} {$ps->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Potencia:</span> <span style='color: #9ca3af;'>{$ps->power} W</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$powerSupply->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$powerSupply->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('tower_case_info')
+                                        ->label('Gabinete/Case')
+                                        ->state(function () use ($towerCase) {
+                                            if (!$towerCase) return '<span style="color: #9ca3af;">No asignado</span>';
+                                            $tc = $towerCase->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$tc->brand} {$tc->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$towerCase->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$towerCase->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('network_adapter_info')
+                                        ->label('Adaptador de Red')
+                                        ->state(function () use ($networkAdapter) {
+                                            if (!$networkAdapter) return '<span style="color: #9ca3af;">No asignado</span>';
+                                            $na = $networkAdapter->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$na->brand} {$na->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$networkAdapter->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$networkAdapter->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+                                ])
+                                ->columns(3),
+
+                            // SECCIÓN: MEMORIA Y ALMACENAMIENTO
+                            ViewEntry::make('memoria_header')
+                                ->view('filament.infolists.section-header', [
+                                    'title' => '💾 Memoria y Almacenamiento',
+                                    'gradient' => 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                                    'textColor' => '#1f2937'
+                                ])
+                                ->columnSpanFull(),
+                            
+                            Section::make()
+                                ->schema([
+                                    TextEntry::make('rams_info')
+                                        ->label('Memorias RAM')
+                                        ->state(function () use ($rams) {
+                                            if ($rams->isEmpty()) return '<span style="color: #9ca3af;">No hay memorias RAM asignadas</span>';
+                                            return $rams->map(function ($ram, $index) {
+                                                $r = $ram->componentable;
+                                                $num = $index + 1;
+                                                return "<div style='margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #6366f1;'>" .
+                                                       "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>RAM #{$num}: {$r->brand} {$r->model}</div>" .
+                                                       "<div style='line-height: 1.6;'>" .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Capacidad:</span> <span style='color: #9ca3af;'>{$r->capacity} GB</span> | " .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Tipo:</span> <span style='color: #9ca3af;'>{$r->type}</span> | " .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Frecuencia:</span> <span style='color: #9ca3af;'>{$r->frequency} MHz</span><br>" .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$ram->serial}</span> | " .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$ram->status}</span>" .
+                                                       "</div></div>";
+                                            })->join('');
+                                        })
+                                        ->html()
+                                        ->columnSpanFull(),
+
+                                    TextEntry::make('roms_info')
+                                        ->label('Almacenamiento (ROMs)')
+                                        ->state(function () use ($roms) {
+                                            if ($roms->isEmpty()) return '<span style="color: #9ca3af;">No hay almacenamiento asignado</span>';
+                                            return $roms->map(function ($rom, $index) {
+                                                $r = $rom->componentable;
+                                                $num = $index + 1;
+                                                return "<div style='margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #8b5cf6;'>" .
+                                                       "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>Almacenamiento #{$num}: {$r->brand} {$r->model}</div>" .
+                                                       "<div style='line-height: 1.6;'>" .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Capacidad:</span> <span style='color: #9ca3af;'>{$r->capacity} GB</span> | " .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Tipo:</span> <span style='color: #9ca3af;'>{$r->type}</span><br>" .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$rom->serial}</span> | " .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$rom->status}</span>" .
+                                                       "</div></div>";
+                                            })->join('');
+                                        })
+                                        ->html()
+                                        ->columnSpanFull(),
+                                ])
+                                ->columns(2),
+
+                            // SECCIÓN: PERIFÉRICOS
+                            ViewEntry::make('perifericos_header')
+                                ->view('filament.infolists.section-header', [
+                                    'title' => '🖥️ Periféricos',
+                                    'gradient' => 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                                    'textColor' => 'white'
+                                ])
+                                ->columnSpanFull(),
+                            
+                            Section::make()
+                                ->schema([
+                                    TextEntry::make('monitors_info')
+                                        ->label('Monitores')
+                                        ->state(function () use ($monitors) {
+                                            if ($monitors->isEmpty()) return '<span style="color: #9ca3af;">No hay monitores asignados</span>';
+                                            return $monitors->map(function ($monitor, $index) {
+                                                $m = $monitor->componentable;
+                                                $num = $index + 1;
+                                                return "<div style='margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #10b981;'>" .
+                                                       "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>Monitor #{$num}: {$m->brand} {$m->model}</div>" .
+                                                       "<div style='line-height: 1.6;'>" .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Tamaño:</span> <span style='color: #9ca3af;'>{$m->screen_size} pulgadas</span><br>" .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$monitor->serial}</span> | " .
+                                                       "<span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$monitor->status}</span>" .
+                                                       "</div></div>";
+                                            })->join('');
+                                        })
+                                        ->html()
+                                        ->columnSpanFull(),
+
+                                    TextEntry::make('keyboard_info')
+                                        ->label('Teclado')
+                                        ->state(function () use ($keyboard) {
+                                            if (!$keyboard) return '<span style="color: #9ca3af;">No asignado</span>';
+                                            $kb = $keyboard->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$kb->brand} {$kb->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$keyboard->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$keyboard->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('mouse_info')
+                                        ->label('Mouse')
+                                        ->state(function () use ($mouse) {
+                                            if (!$mouse) return '<span style="color: #9ca3af;">No asignado</span>';
+                                            $m = $mouse->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$m->brand} {$m->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$mouse->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$mouse->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('audio_device_info')
+                                        ->label('Dispositivo de Audio')
+                                        ->state(function () use ($audioDevice) {
+                                            if (!$audioDevice) return '<span style="color: #9ca3af;">No asignado</span>';
+                                            $ad = $audioDevice->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$ad->brand} {$ad->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$audioDevice->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$audioDevice->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('stabilizer_info')
+                                        ->label('Estabilizador')
+                                        ->state(function () use ($stabilizer) {
+                                            if (!$stabilizer) return '<span style="color: #9ca3af;">No asignado</span>';
+                                            $st = $stabilizer->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$st->brand} {$st->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Potencia:</span> <span style='color: #9ca3af;'>{$st->power} VA</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$stabilizer->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$stabilizer->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+
+                                    TextEntry::make('splitter_info')
+                                        ->label('Multicontacto/Splitter')
+                                        ->state(function () use ($splitter) {
+                                            if (!$splitter) return '<span style="color: #9ca3af;">No asignado</span>';
+                                            $sp = $splitter->componentable;
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$sp->brand} {$sp->model}</div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Número de Tomas:</span> <span style='color: #9ca3af;'>{$sp->outlets}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$splitter->serial}</span></div>" .
+                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$splitter->status}</span></div>" .
+                                                   "</div>";
+                                        })
+                                        ->html(),
+                                ])
+                                ->columns(3),
+                        ];
+                    }),
+
                 Action::make('verHistorial')
                     ->label('Historial')
                     ->icon('heroicon-o-clock')
@@ -1180,117 +1289,6 @@ class ComputersTable
                                 'id' => $record->id,
                             ])),
                     ]),
-
-                Action::make('asignarPeriferico')
-                    ->label('Asignar Periférico')
-                    ->icon('heroicon-o-computer-desktop')
-                    ->color('success')
-                    ->visible(fn ($record) => $record->peripheral_id === null && in_array($record->status, ['Activo', 'Inactivo']))
-                    ->modalHeading('Asignar Periférico a Computadora')
-                    ->modalDescription(fn ($record) => "Seleccione un periférico disponible para asignar a {$record->serial}. La computadora se trasladará a la ubicación del periférico y ambos se activarán.")
-                    ->modalWidth('md')
-                    ->modalSubmitActionLabel('Asignar')
-                    ->modalCancelActionLabel('Cancelar')
-                    ->form([
-                        Select::make('peripheral_id')
-                            ->label('Periférico Disponible')
-                            ->options(function ($record) {
-                                // Solo periféricos INACTIVOS y SIN PC asignada
-                                return \App\Models\Peripheral::whereNull('computer_id')
-                                    ->where('status', 'Inactivo')
-                                    ->with('components.componentable')
-                                    ->get()
-                                    ->mapWithKeys(function ($peripheral) {
-                                        $componentCount = $peripheral->components->where('status', 'Vigente')->count();
-                                        return [$peripheral->id => "{$peripheral->code} ({$componentCount} componentes) - Ubicación: {$peripheral->location->name}"];
-                                    });
-                            })
-                            ->searchable()
-                            ->required()
-                            ->helperText('Solo se muestran periféricos inactivos sin PC asignada'),
-                    ])
-                    ->action(function ($record, array $data): void {
-                        $peripheral = \App\Models\Peripheral::find($data['peripheral_id']);
-                        
-                        if (!$peripheral) {
-                            Notification::make()
-                                ->title('Error')
-                                ->danger()
-                                ->body('Periférico no encontrado.')
-                                ->send();
-                            return;
-                        }
-
-                        DB::transaction(function () use ($record, $peripheral) {
-                            $originalComputerLocation = $record->location_id;
-                            
-                            // Mover LA PC a la ubicación del periférico (no al revés)
-                            $record->update([
-                                'location_id' => $peripheral->location_id,
-                                'peripheral_id' => $peripheral->id,
-                                'status' => 'Activo', // Ambos se activan
-                            ]);
-                            
-                            // Activar periférico y asignar PC
-                            $peripheral->update([
-                                'computer_id' => $record->id,
-                                'status' => 'Activo', // Ambos se activan
-                            ]);
-
-                            // Crear registro de traslado de la PC (si cambió de ubicación)
-                            if ($originalComputerLocation != $peripheral->location_id) {
-                                \App\Models\Transfer::create([
-                                    'deviceable_type' => \App\Models\Computer::class,
-                                    'deviceable_id' => $record->id,
-                                    'registered_by' => Auth::id(),
-                                    'origin_id' => $originalComputerLocation,
-                                    'destiny_id' => $peripheral->location_id,
-                                    'date' => now()->format('Y-m-d'),
-                                    'reason' => "Traslado para asignación con periférico {$peripheral->code}",
-                                    'status' => 'Finalizado',
-                                ]);
-                            }
-                        });
-
-                        Notification::make()
-                            ->title('Periférico asignado')
-                            ->success()
-                            ->body("El periférico {$peripheral->code} ha sido asignado a {$record->serial}. Ambos están ahora activos en {$peripheral->location->name}.")
-                            ->send();
-                    }),
-
-                Action::make('desmantelar')
-                    ->label('Desmantelar')
-                    ->icon('heroicon-o-wrench-screwdriver')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('Desmantelar Computadora')
-                    ->modalDescription(fn ($record) => "¿Está seguro de desmantelar la computadora {$record->serial}? Todos los componentes vigentes serán removidos y la computadora pasará al estado 'Desmantelado'.")
-                    ->modalSubmitActionLabel('Sí, desmantelar')
-                    ->modalCancelActionLabel('Cancelar')
-                    ->visible(fn ($record) => $record->status === 'Inactivo')
-                    ->action(function ($record) {
-                        DB::transaction(function () use ($record) {
-                            // Actualizar todos los componentes vigentes a "Removido"
-                            DB::table('componentables')
-                                ->where('componentable_type', 'App\\Models\\Computer')
-                                ->where('componentable_id', $record->id)
-                                ->where('status', 'Vigente')
-                                ->update([
-                                    'status' => 'Removido',
-                                    'updated_at' => now()
-                                ]);
-                            
-                            // Cambiar el estado de la computadora a Desmantelado
-                            $record->update(['status' => 'Desmantelado']);
-                        });
-                        
-                        Notification::make()
-                            ->title('Computadora desmantelada')
-                            ->success()
-                            ->body("La computadora {$record->serial} ha sido desmantelada exitosamente.")
-                            ->send();
-                    }),
 
                 EditAction::make()
                     ->label('Editar'),

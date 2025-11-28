@@ -17,6 +17,7 @@ use UnitEnum;
 
 class PeripheralResource extends Resource
 {
+
     protected static ?string $model = Peripheral::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedComputerDesktop;

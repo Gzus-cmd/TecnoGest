@@ -17,6 +17,7 @@ use UnitEnum;
 
 class MonitorResource extends Resource
 {
+
     protected static ?string $model = Monitor::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleGroup;

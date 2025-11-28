@@ -17,6 +17,7 @@ use UnitEnum;
 
 class PowerSupplyResource extends Resource
 {
+
     protected static ?string $model = PowerSupply::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBolt;

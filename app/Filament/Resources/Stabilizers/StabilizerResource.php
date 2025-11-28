@@ -17,6 +17,7 @@ use UnitEnum;
 
 class StabilizerResource extends Resource
 {
+
     protected static ?string $model = Stabilizer::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPower;

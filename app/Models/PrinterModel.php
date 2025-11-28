@@ -21,4 +21,13 @@ class PrinterModel extends Model
     {
         return $this->hasMany(Printer::class);
     }
+
+    protected static function booted(): void
+    {
+        // Eliminación en cascada
+        static::deleting(function (PrinterModel $model) {
+            // Eliminar impresoras asociadas (disparando sus eventos deleting)
+            $model->printers->each->delete();
+        });
+    }
 }

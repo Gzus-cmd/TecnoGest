@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Constants\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -53,5 +54,20 @@ class Projector extends Model
     public function transfers() : MorphMany 
     {
         return $this->morphMany(Transfer::class, 'deviceable');
+    }
+
+    protected static function booted(): void
+    {
+        // Eliminación en cascada
+        static::deleting(function (Projector $projector) {
+            // Eliminar mantenimientos
+            $projector->maintenances()->delete();
+            
+            // Eliminar traslados
+            $projector->transfers()->delete();
+            
+            // Desvincular componentes
+            $projector->components()->detach();
+        });
     }
 }

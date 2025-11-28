@@ -25,7 +25,8 @@ class ListProjectors extends ListRecords
                 ->label('Registrar Proyector'),
             
             Action::make('preventive_maintenance')
-                ->label('Mantenimiento Preventivo')
+                ->visible(fn () => \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin')
+                ->label('Preventivo')
                 ->icon('heroicon-o-wrench-screwdriver')
                 ->color('warning')
                 ->requiresConfirmation()

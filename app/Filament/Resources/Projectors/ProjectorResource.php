@@ -19,6 +19,7 @@ use UnitEnum;
 
 class ProjectorResource extends Resource
 {
+
     protected static ?string $model = Projector::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedVideoCamera;

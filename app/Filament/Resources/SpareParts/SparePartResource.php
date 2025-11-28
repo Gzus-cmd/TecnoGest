@@ -17,6 +17,7 @@ use UnitEnum;
 
 class SparePartResource extends Resource
 {
+
     protected static ?string $model = SparePart::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrench;

@@ -94,6 +94,40 @@ class ComputerForm
                             ]),
                     ]),
 
+                Section::make('Asignación de Periféricos')
+                    ->description('Asigne un conjunto de periféricos (opcional)')
+                    ->schema([
+                        Select::make('peripheral_id')
+                            ->label('Conjunto de Periféricos')
+                            ->options(function ($livewire) {
+                                $currentRecord = $livewire instanceof \Filament\Resources\Pages\EditRecord 
+                                    ? $livewire->getRecord() 
+                                    : null;
+                                
+                                $query = \App\Models\Peripheral::query();
+                                
+                                // Si estamos editando, incluir el periférico actual O disponibles
+                                if ($currentRecord && $currentRecord->peripheral_id) {
+                                    $query->where(function ($q) use ($currentRecord) {
+                                        $q->whereNull('computer_id')
+                                          ->orWhere('id', $currentRecord->peripheral_id);
+                                    });
+                                } else {
+                                    // Si estamos creando, solo disponibles
+                                    $query->whereNull('computer_id');
+                                }
+                                
+                                return $query->with('location')->get()->mapWithKeys(function ($peripheral) use ($currentRecord) {
+                                    $location = $peripheral->location ? " - {$peripheral->location->name}" : '';
+                                    return [$peripheral->id => "{$peripheral->code}{$location}"];
+                                });
+                            })
+                            ->searchable()
+                            ->nullable()
+                            ->placeholder('Sin asignar')
+                            ->helperText('Seleccione un conjunto de periféricos disponible'),
+                    ]),
+
                 Section::make('Componentes Principales')
                     ->description('Seleccione los componentes principales de la computadora (Obligatorios: Placa Base, CPU, Fuente de Poder, Gabinete, RAM y ROM)')
                     ->collapsible()

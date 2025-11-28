@@ -17,6 +17,7 @@ use UnitEnum;
 
 class NetworkAdapterResource extends Resource
 {
+
     protected static ?string $model = NetworkAdapter::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWifi;

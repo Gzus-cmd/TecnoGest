@@ -17,6 +17,7 @@ use UnitEnum;
 
 class CPUResource extends Resource
 {
+
     protected static ?string $model = CPU::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCpuChip;

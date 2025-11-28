@@ -8,7 +8,7 @@ Sistema integral de gestión de inventario tecnológico desarrollado con Laravel
 - ✅ **Inventario de Componentes**: CPUs, GPUs, RAM, discos duros, placas base, etc.
 - ✅ **Piezas de Repuesto**: Cabezales, rodillos, fusores, lámparas, lentes, filtros
 - ✅ **Sistema de Componentes**: Asignación de componentes a dispositivos con historial
-- ✅ **Mantenimientos**: Registro de mantenimientos preventivos y correctivos
+- ✅ **Mantenimientos**: Registro de mantenimientos de rutina y correctivos
 - ✅ **Transferencias**: Control de movimientos de equipos entre ubicaciones
 - ✅ **Proveedores**: Gestión de proveedores de equipos y repuestos
 - ✅ **Ubicaciones**: Organización por pabellones y ambientes

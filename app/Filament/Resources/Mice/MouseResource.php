@@ -17,6 +17,7 @@ use UnitEnum;
 
 class MouseResource extends Resource
 {
+
     protected static ?string $model = Mouse::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCursorArrowRays;
