@@ -483,10 +483,10 @@ class PeripheralsTable
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalHeading('Desmantelar Periférico')
-                    ->modalDescription(fn ($record) => "¿Está seguro de desmantelar el periférico {$record->code}? Todos los componentes vigentes serán removidos y el periférico pasará al estado 'Desmantelado'.")
+                    ->modalDescription(fn ($record) => "¿Está seguro de desmantelar el periférico {$record->code}? Todos los componentes vigentes serán removidos.")
                     ->modalSubmitActionLabel('Sí, desmantelar')
                     ->modalCancelActionLabel('Cancelar')
-                    ->visible(fn ($record) => $record->status === 'Inactivo')
+                    ->visible(fn ($record) => $record->computer_id === null)
                     ->action(function ($record) {
                         DB::transaction(function () use ($record) {
                             DB::table('componentables')
@@ -497,8 +497,6 @@ class PeripheralsTable
                                     'status' => 'Removido',
                                     'updated_at' => now()
                                 ]);
-                            
-                            $record->update(['status' => 'Desmantelado']);
                         });
                         
                         Notification::make()

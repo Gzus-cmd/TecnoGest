@@ -66,7 +66,6 @@ class UpdatedPeripheralsDataSeeder extends Seeder
             $peripheral = Peripheral::create([
                 'code' => 'PER-' . str_pad($existingCount + $i, 3, '0', STR_PAD_LEFT),
                 'location_id' => $locations->random()->id,
-                'status' => 'Activo',
             ]);
 
             $componentsToAttach = [];
@@ -213,7 +212,6 @@ class UpdatedPeripheralsDataSeeder extends Seeder
             $peripheral = Peripheral::create([
                 'code' => 'PER-' . str_pad(Peripheral::count() + 1, 3, '0', STR_PAD_LEFT),
                 'location_id' => $originalLocation->id, // Queda en ubicación original
-                'status' => 'Activo', // Disponible para reasignación
                 'computer_id' => null, // Desvinculado (la PC está en taller)
             ]);
 

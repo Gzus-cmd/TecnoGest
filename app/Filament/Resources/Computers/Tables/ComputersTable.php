@@ -142,13 +142,12 @@ class ComputersTable
                             $record->update([
                                 'location_id' => $peripheral->location_id,
                                 'peripheral_id' => $peripheral->id,
-                                'status' => 'Activo', // Ambos se activan
+                                'status' => 'Activo',
                             ]);
                             
-                            // Activar periférico y asignar PC
+                            // Asignar PC al periférico
                             $peripheral->update([
                                 'computer_id' => $record->id,
-                                'status' => 'Activo', // Ambos se activan
                             ]);
 
                             // Crear registro de traslado de la PC (si cambió de ubicación)
@@ -863,7 +862,6 @@ class ComputersTable
                                     'code' => $code,
                                     'location_id' => $record->location_id,
                                     'computer_id' => $record->id,
-                                    'status' => $record->status,
                                     'notes' => 'Creado desde Actualizar Computer #' . $record->id,
                                 ]);
                                 

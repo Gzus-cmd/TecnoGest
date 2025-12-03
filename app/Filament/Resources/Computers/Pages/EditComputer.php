@@ -108,7 +108,6 @@ class EditComputer extends EditRecord
             'code' => $code,
             'location_id' => $computer->location_id,
             'computer_id' => $computer->id,
-            'status' => $computer->status,
             'notes' => 'Creado desde edición de Computer #' . $computer->id,
         ]);
 

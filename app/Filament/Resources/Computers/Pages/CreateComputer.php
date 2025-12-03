@@ -85,7 +85,6 @@ class CreateComputer extends CreateRecord
             'code' => $code,
             'location_id' => $computer->location_id,
             'computer_id' => $computer->id,
-            'status' => $computer->status,
             'notes' => 'Creado junto con Computer #' . $computer->id,
         ]);
 

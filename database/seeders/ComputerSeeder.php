@@ -100,7 +100,6 @@ class ComputerSeeder extends Seeder
             'code' => 'PER-' . str_pad($peripheralCount + 1, 3, '0', STR_PAD_LEFT),
             'location_id' => $computer->location_id,
             'computer_id' => $computer->id,
-            'status' => 'Activo', // Mismo estado que la PC
         ]);
         
         // Asignar periférico a la computadora
