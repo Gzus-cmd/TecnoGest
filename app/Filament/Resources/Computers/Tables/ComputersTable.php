@@ -4,6 +4,12 @@ namespace App\Filament\Resources\Computers\Tables;
 
 use App\Models\Component;
 use App\Models\OS;
+use App\Models\Monitor;
+use App\Models\Keyboard;
+use App\Models\Mouse;
+use App\Models\AudioDevice;
+use App\Models\Stabilizer;
+use App\Models\Splitter;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -52,6 +58,12 @@ class ComputersTable
                 TextColumn::make('os.name')
                     ->label('Sistema Operativo')
                     ->searchable(),
+                TextColumn::make('peripheral.code')
+                    ->label('Periféricos')
+                    ->badge()
+                    ->color('info')
+                    ->default('Sin periféricos')
+                    ->formatStateUsing(fn ($state) => $state ?? 'Sin periféricos'),
                 TextColumn::make('created_at')
                     ->label('Registrado')
                     ->dateTime()
@@ -84,6 +96,813 @@ class ComputersTable
 
             ])
             ->recordActions([
+                Action::make('asignarPeriferico')
+                    ->label('Asignar')
+                    ->icon('heroicon-o-computer-desktop')
+                    ->color('success')
+                    ->visible(fn ($record) => $record->peripheral_id === null && in_array($record->status, ['Activo', 'Inactivo']))
+                    ->modalHeading('Asignar Periférico a Computadora')
+                    ->modalDescription(fn ($record) => "Seleccione un periférico disponible para asignar a {$record->serial}. La computadora se trasladará a la ubicación del periférico y ambos se activarán.")
+                    ->modalWidth('md')
+                    ->modalSubmitActionLabel('Asignar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->form([
+                        Select::make('peripheral_id')
+                            ->label('Periférico Disponible')
+                            ->options(function ($record) {
+                                // Solo periféricos SIN PC asignada
+                                return \App\Models\Peripheral::whereNull('computer_id')
+                                    ->with(['components.componentable', 'location'])
+                                    ->get()
+                                    ->mapWithKeys(function ($peripheral) {
+                                        $locationName = $peripheral->location ? $peripheral->location->name : 'Sin ubicación';
+                                        return [$peripheral->id => "{$peripheral->code} | {$locationName}"];
+                                    });
+                            })
+                            ->searchable()
+                            ->required()
+                            ->helperText('Solo se muestran periféricos inactivos sin PC asignada'),
+                    ])
+                    ->action(function ($record, array $data): void {
+                        $peripheral = \App\Models\Peripheral::find($data['peripheral_id']);
+                        
+                        if (!$peripheral) {
+                            Notification::make()
+                                ->title('Error')
+                                ->danger()
+                                ->body('Periférico no encontrado.')
+                                ->send();
+                            return;
+                        }
+
+                        DB::transaction(function () use ($record, $peripheral) {
+                            $originalComputerLocation = $record->location_id;
+                            
+                            // Mover LA PC a la ubicación del periférico (no al revés)
+                            $record->update([
+                                'location_id' => $peripheral->location_id,
+                                'peripheral_id' => $peripheral->id,
+                                'status' => 'Activo',
+                            ]);
+                            
+                            // Asignar PC al periférico
+                            $peripheral->update([
+                                'computer_id' => $record->id,
+                            ]);
+
+                            // Crear registro de traslado de la PC (si cambió de ubicación)
+                            if ($originalComputerLocation != $peripheral->location_id) {
+                                \App\Models\Transfer::create([
+                                    'deviceable_type' => \App\Models\Computer::class,
+                                    'deviceable_id' => $record->id,
+                                    'registered_by' => Auth::id(),
+                                    'origin_id' => $originalComputerLocation,
+                                    'destiny_id' => $peripheral->location_id,
+                                    'date' => now()->format('Y-m-d'),
+                                    'reason' => "Traslado para asignación con periférico {$peripheral->code}",
+                                    'status' => 'Finalizado',
+                                ]);
+                            }
+                        });
+
+                        Notification::make()
+                            ->title('Periférico asignado')
+                            ->success()
+                            ->body("El periférico {$peripheral->code} ha sido asignado a {$record->serial}. Ambos están ahora activos en {$peripheral->location->name}.")
+                            ->send();
+                    }),
+
+                Action::make('desmantelar')
+                    ->label('Desmantelar')
+                    ->icon('heroicon-o-wrench-screwdriver')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Desmantelar Computadora')
+                    ->modalDescription(fn ($record) => "¿Está seguro de desmantelar la computadora {$record->serial}? Todos los componentes vigentes serán removidos y la computadora pasará al estado 'Desmantelado'.")
+                    ->modalSubmitActionLabel('Sí, desmantelar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->visible(fn ($record) => $record->status === 'Inactivo')
+                    ->action(function ($record) {
+                        DB::transaction(function () use ($record) {
+                            // Actualizar todos los componentes vigentes a "Removido"
+                            DB::table('componentables')
+                                ->where('componentable_type', 'App\\Models\\Computer')
+                                ->where('componentable_id', $record->id)
+                                ->where('status', 'Vigente')
+                                ->update([
+                                    'status' => 'Removido',
+                                    'updated_at' => now()
+                                ]);
+                            
+                            // Cambiar el estado de la computadora a Desmantelado
+                            $record->update(['status' => 'Desmantelado']);
+                        });
+                        
+                        Notification::make()
+                            ->title('Computadora desmantelada')
+                            ->success()
+                            ->body("La computadora {$record->serial} ha sido desmantelada exitosamente.")
+                            ->send();
+                    }),
+
+                Action::make('actualizarSistema')
+                    ->label('Actualizar')
+                    ->icon('heroicon-o-cpu-chip')
+                    ->color('info')
+                    ->visible(fn ($record) => $record->status === 'En Mantenimiento')
+                    ->modalHeading('Actualizar')
+                    ->modalDescription('Modifique los componentes de la computadora')
+                    ->modalWidth('6xl')
+                    ->modalSubmitActionLabel('Guardar Cambios')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->form([
+
+                        Grid::make(2)->schema([
+                            Select::make('motherboard_component_id')
+                                ->label('Placa Base')
+                                ->options(function ($record) {
+                                    $record->load('components.componentable');
+                                    $current = $record->components->firstWhere('componentable_type', 'App\Models\Motherboard');
+                                    
+                                    $available = Component::where('componentable_type', 'App\Models\Motherboard')
+                                        ->where('status', 'Operativo')
+                                        ->whereDoesntHave('computers')
+                                        ->with('componentable')
+                                        ->get()
+                                        ->mapWithKeys(function ($component) {
+                                            $mb = $component->componentable;
+                                            return [$component->id => "{$mb->brand} {$mb->model} - Serial: {$component->serial}"];
+                                        });
+
+                                    if ($current) {
+                                        $mb = $current->componentable;
+                                        $available->prepend("{$mb->brand} {$mb->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                    }
+
+                                    return $available;
+                                })
+                                ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Motherboard')?->id)
+                                ->searchable()
+                                ->live(),
+
+                            Select::make('cpu_component_id')
+                                ->label('Procesador (CPU)')
+                                ->options(function (Get $get, $record) {
+                                    $motherboardComponentId = $get('motherboard_component_id');
+                                    $record->load('components.componentable');
+                                    $current = $record->components->firstWhere('componentable_type', 'App\Models\CPU');
+
+                                    // Si no hay placa base seleccionada, mostrar el actual
+                                    if (!$motherboardComponentId) {
+                                        if ($current) {
+                                            $cpu = $current->componentable;
+                                            return [$current->id => "{$cpu->brand} {$cpu->model} - Serial: {$current->serial} (ACTUAL)"];
+                                        }
+                                        return [];
+                                    }
+
+                                    $mbComponent = Component::with('componentable')->find($motherboardComponentId);
+                                    if (!$mbComponent) {
+                                        return [];
+                                    }
+
+                                    $motherboard = $mbComponent->componentable;
+                                    $socket = $motherboard->socket;
+
+                                    $available = Component::where('componentable_type', 'App\Models\CPU')
+                                        ->where('status', 'Operativo')
+                                        ->whereDoesntHave('computers')
+                                        ->with('componentable')
+                                        ->get()
+                                        ->filter(function ($component) use ($socket) {
+                                            return $component->componentable->socket === $socket;
+                                        })
+                                        ->mapWithKeys(function ($component) {
+                                            $cpu = $component->componentable;
+                                            return [$component->id => "{$cpu->brand} {$cpu->model} ({$cpu->socket}) - Serial: {$component->serial}"];
+                                        });
+
+                                    if ($current && $current->componentable->socket === $socket) {
+                                        $cpu = $current->componentable;
+                                        $available->prepend("{$cpu->brand} {$cpu->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                    }
+
+                                    return $available;
+                                })
+                                ->getOptionLabelUsing(function ($value) {
+                                    if (!$value) return null;
+                                    $component = Component::with('componentable')->find($value);
+                                    if (!$component || !$component->componentable) return $value;
+                                    $cpu = $component->componentable;
+                                    return "{$cpu->brand} {$cpu->model} - Serial: {$component->serial}";
+                                })
+                                ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\CPU')?->id)
+                                ->searchable(),
+                        ]),
+                        Select::make('gpu_component_id')
+                            ->label('Tarjeta Gráfica (GPU)')
+                            ->options(function ($record) {
+                                $record->load('components.componentable');
+                                $current = $record->components->firstWhere('componentable_type', 'App\Models\GPU');
+                                
+                                $available = Component::where('componentable_type', 'App\Models\GPU')
+                                    ->where('status', 'Operativo')
+                                    ->whereDoesntHave('computers')
+                                    ->with('componentable')
+                                    ->get()
+                                    ->mapWithKeys(function ($component) {
+                                        $gpu = $component->componentable;
+                                        return [$component->id => "{$gpu->brand} {$gpu->model} - {$gpu->vram}GB - Serial: {$component->serial}"];
+                                    });
+
+                                if ($current) {
+                                    $gpu = $current->componentable;
+                                    $available->prepend("{$gpu->brand} {$gpu->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                }
+
+                                return $available;
+                            })
+                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\GPU')?->id)
+                            ->searchable(),
+
+                        Grid::make(2)->schema([
+                        Repeater::make('rams')
+                            ->label('Memorias RAM')
+                            ->schema([
+                                Select::make('component_id')
+                                    ->label('RAM')
+                                    ->options(function ($record) {
+                                        // Obtener IDs de componentes RAM actualmente asignados a esta computadora
+                                        $currentRamIds = $record->components()
+                                            ->where('components.componentable_type', 'App\Models\RAM')
+                                            ->pluck('components.id')
+                                            ->toArray();
+                                        
+                                        // Obtener todos los componentes RAM operativos que:
+                                        // 1. No están asignados a ninguna computadora (whereDoesntHave)
+                                        // 2. O están asignados a ESTA computadora
+                                        $availableRams = Component::where('componentable_type', 'App\Models\RAM')
+                                            ->where('status', 'Operativo')
+                                            ->where(function ($query) use ($currentRamIds) {
+                                                $query->whereDoesntHave('computers')
+                                                    ->orWhereIn('id', $currentRamIds);
+                                            })
+                                            ->with('componentable')
+                                            ->get();
+                                        
+                                        return $availableRams->mapWithKeys(function ($component) use ($currentRamIds) {
+                                            $ram = $component->componentable;
+                                            $label = "{$ram->brand} {$ram->model} - {$ram->capacity}GB - Serial: {$component->serial}";
+                                            if (in_array($component->id, $currentRamIds)) {
+                                                $label .= " (ACTUAL)";
+                                            }
+                                            return [$component->id => $label];
+                                        });
+                                    })
+                                    ->searchable()
+                                    ->required()
+                                    ->distinct(),
+                            ])
+                            ->minItems(1)
+                            ->addActionLabel('Agregar RAM')
+                            ->collapsible()
+                            ->collapsed(),
+
+                        Repeater::make('roms')
+                            ->label('Almacenamiento')
+                            ->schema([
+                                Select::make('component_id')
+                                    ->label('ROM')
+                                    ->options(function ($record) {
+                                        // Obtener IDs de componentes ROM actualmente asignados a esta computadora
+                                        $currentRomIds = $record->components()
+                                            ->where('components.componentable_type', 'App\Models\ROM')
+                                            ->pluck('components.id')
+                                            ->toArray();
+                                        
+                                        // Obtener todos los componentes ROM operativos que:
+                                        // 1. No están asignados a ninguna computadora
+                                        // 2. O están asignados a ESTA computadora
+                                        $availableRoms = Component::where('componentable_type', 'App\Models\ROM')
+                                            ->where('status', 'Operativo')
+                                            ->where(function ($query) use ($currentRomIds) {
+                                                $query->whereDoesntHave('computers')
+                                                    ->orWhereIn('id', $currentRomIds);
+                                            })
+                                            ->with('componentable')
+                                            ->get();
+                                        
+                                        return $availableRoms->mapWithKeys(function ($component) use ($currentRomIds) {
+                                            $rom = $component->componentable;
+                                            $label = "{$rom->brand} {$rom->model} - {$rom->capacity}GB - Serial: {$component->serial}";
+                                            if (in_array($component->id, $currentRomIds)) {
+                                                $label .= " (ACTUAL)";
+                                            }
+                                            return [$component->id => $label];
+                                        });
+                                    })
+                                    ->searchable()
+                                    ->required()
+                                    ->distinct(),
+                            ])
+                            ->minItems(1)
+                            ->addActionLabel('Agregar Almacenamiento')
+                            ->collapsible()
+                            ->collapsed(),
+                                ]),
+                        Grid::make(2)->schema
+                        ([        
+                        Select::make('power_supply_component_id')
+                            ->label('Fuente de Poder')
+                            ->options(function ($record) {
+                                $record->load('components.componentable');
+                                $current = $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply');
+                                
+                                $available = Component::where('componentable_type', 'App\Models\PowerSupply')
+                                    ->where('status', 'Operativo')
+                                    ->whereDoesntHave('computers')
+                                    ->with('componentable')
+                                    ->get()
+                                    ->mapWithKeys(function ($component) {
+                                        $ps = $component->componentable;
+                                        return [$component->id => "{$ps->brand} {$ps->model} - {$ps->power}W - Serial: {$component->serial}"];
+                                    });
+
+                                if ($current) {
+                                    $ps = $current->componentable;
+                                    $available->prepend("{$ps->brand} {$ps->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                }
+
+                                return $available;
+                            })
+                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply')?->id)
+                            ->searchable(),
+
+                        Select::make('tower_case_component_id')
+                            ->label('Gabinete/Case')
+                            ->options(function ($record) {
+                                $record->load('components.componentable');
+                                $current = $record->components->firstWhere('componentable_type', 'App\Models\TowerCase');
+                                
+                                $available = Component::where('componentable_type', 'App\Models\TowerCase')
+                                    ->where('status', 'Operativo')
+                                    ->whereDoesntHave('computers')
+                                    ->with('componentable')
+                                    ->get()
+                                    ->mapWithKeys(function ($component) {
+                                        $case = $component->componentable;
+                                        return [$component->id => "{$case->brand} {$case->model} - Serial: {$component->serial}"];
+                                    });
+
+                                if ($current) {
+                                    $case = $current->componentable;
+                                    $available->prepend("{$case->brand} {$case->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                }
+
+                                return $available;
+                            })
+                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\TowerCase')?->id)
+                            ->searchable(),
+                        ]),
+
+                        Section::make('Periféricos')
+                            ->description('Componentes externos (opcional)')
+                            ->collapsible()
+                            ->collapsed()
+                            ->schema([
+                                Repeater::make('monitors')
+                                    ->label('Monitores')
+                                    ->schema([
+                                        Select::make('component_id')
+                                            ->label('Monitor')
+                                            ->options(function ($record) {
+                                                $record->load('peripheral.components.componentable');
+                                                $peripheral = $record->peripheral;
+                                                if (!$peripheral) {
+                                                    return Component::where('componentable_type', 'App\Models\Monitor')
+                                                        ->where('status', 'Operativo')
+                                                        ->whereDoesntHave('peripheral')
+                                                        ->with('componentable')
+                                                        ->get()
+                                                        ->mapWithKeys(function ($component) {
+                                                            $monitor = $component->componentable;
+                                                            return [$component->id => "{$monitor->brand} {$monitor->model} - {$monitor->screen_size}\" - Serial: {$component->serial}"];
+                                                        });
+                                                }
+
+                                                $currentMonitorIds = $peripheral->components()
+                                                    ->where('components.componentable_type', 'App\Models\Monitor')
+                                                    ->pluck('components.id')
+                                                    ->toArray();
+
+                                                $available = Component::where('componentable_type', 'App\Models\Monitor')
+                                                    ->where('status', 'Operativo')
+                                                    ->where(function ($query) use ($currentMonitorIds) {
+                                                        $query->whereDoesntHave('peripheral')
+                                                            ->orWhereIn('id', $currentMonitorIds);
+                                                    })
+                                                    ->with('componentable')
+                                                    ->get();
+
+                                                return $available->mapWithKeys(function ($component) use ($currentMonitorIds) {
+                                                    $monitor = $component->componentable;
+                                                    $label = "{$monitor->brand} {$monitor->model} - {$monitor->screen_size}\" - Serial: {$component->serial}";
+                                                    if (in_array($component->id, $currentMonitorIds)) {
+                                                        $label .= " (ACTUAL)";
+                                                    }
+                                                    return [$component->id => $label];
+                                                });
+                                            })
+                                            ->searchable()
+                                            ->required()
+                                            ->distinct(),
+                                    ])
+                                    ->addActionLabel('Agregar Monitor')
+                                    ->collapsible()
+                                    ->defaultItems(0),
+
+                                Grid::make(2)->schema([
+                                    Select::make('keyboard_component_id')
+                                        ->label('Teclado')
+                                        ->options(function ($record) {
+                                            $record->load('peripheral.components.componentable');
+                                            $peripheral = $record->peripheral;
+                                            $current = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Keyboard');
+
+                                            $available = Component::where('componentable_type', 'App\Models\Keyboard')
+                                                ->where('status', 'Operativo')
+                                                ->whereDoesntHave('peripheral')
+                                                ->with('componentable')
+                                                ->get()
+                                                ->mapWithKeys(function ($component) {
+                                                    $kb = $component->componentable;
+                                                    return [$component->id => "{$kb->brand} {$kb->model} - Serial: {$component->serial}"];
+                                                });
+
+                                            if ($current) {
+                                                $kb = $current->componentable;
+                                                $available->prepend("{$kb->brand} {$kb->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                            }
+
+                                            return $available;
+                                        })
+                                        ->searchable(),
+
+                                    Select::make('mouse_component_id')
+                                        ->label('Mouse')
+                                        ->options(function ($record) {
+                                            $record->load('peripheral.components.componentable');
+                                            $peripheral = $record->peripheral;
+                                            $current = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Mouse');
+
+                                            $available = Component::where('componentable_type', 'App\Models\Mouse')
+                                                ->where('status', 'Operativo')
+                                                ->whereDoesntHave('peripheral')
+                                                ->with('componentable')
+                                                ->get()
+                                                ->mapWithKeys(function ($component) {
+                                                    $mouse = $component->componentable;
+                                                    return [$component->id => "{$mouse->brand} {$mouse->model} - Serial: {$component->serial}"];
+                                                });
+
+                                            if ($current) {
+                                                $mouse = $current->componentable;
+                                                $available->prepend("{$mouse->brand} {$mouse->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                            }
+
+                                            return $available;
+                                        })
+                                        ->searchable(),
+
+                                    Select::make('audio_component_id')
+                                        ->label('Dispositivo de Audio')
+                                        ->options(function ($record) {
+                                            $record->load('peripheral.components.componentable');
+                                            $peripheral = $record->peripheral;
+                                            $current = $peripheral?->components->firstWhere('componentable_type', 'App\Models\AudioDevice');
+
+                                            $available = Component::where('componentable_type', 'App\Models\AudioDevice')
+                                                ->where('status', 'Operativo')
+                                                ->whereDoesntHave('peripheral')
+                                                ->with('componentable')
+                                                ->get()
+                                                ->mapWithKeys(function ($component) {
+                                                    $audio = $component->componentable;
+                                                    return [$component->id => "{$audio->brand} {$audio->model} ({$audio->type}) - Serial: {$component->serial}"];
+                                                });
+
+                                            if ($current) {
+                                                $audio = $current->componentable;
+                                                $available->prepend("{$audio->brand} {$audio->model} ({$audio->type}) - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                            }
+
+                                            return $available;
+                                        })
+                                        ->searchable(),
+
+                                    Select::make('stabilizer_component_id')
+                                        ->label('Estabilizador')
+                                        ->options(function ($record) {
+                                            $record->load('peripheral.components.componentable');
+                                            $peripheral = $record->peripheral;
+                                            $current = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Stabilizer');
+
+                                            $available = Component::where('componentable_type', 'App\Models\Stabilizer')
+                                                ->where('status', 'Operativo')
+                                                ->whereDoesntHave('peripheral')
+                                                ->with('componentable')
+                                                ->get()
+                                                ->mapWithKeys(function ($component) {
+                                                    $stab = $component->componentable;
+                                                    return [$component->id => "{$stab->brand} {$stab->model} - {$stab->capacity}VA - Serial: {$component->serial}"];
+                                                });
+
+                                            if ($current) {
+                                                $stab = $current->componentable;
+                                                $available->prepend("{$stab->brand} {$stab->model} - {$stab->capacity}VA - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                            }
+
+                                            return $available;
+                                        })
+                                        ->searchable(),
+
+                                    Select::make('splitter_component_id')
+                                        ->label('Splitter')
+                                        ->options(function ($record) {
+                                            $record->load('peripheral.components.componentable');
+                                            $peripheral = $record->peripheral;
+                                            $current = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Splitter');
+
+                                            $available = Component::where('componentable_type', 'App\Models\Splitter')
+                                                ->where('status', 'Operativo')
+                                                ->whereDoesntHave('peripheral')
+                                                ->with('componentable')
+                                                ->get()
+                                                ->mapWithKeys(function ($component) {
+                                                    $splitter = $component->componentable;
+                                                    return [$component->id => "{$splitter->brand} {$splitter->model} - {$splitter->ports} puertos - Serial: {$component->serial}"];
+                                                });
+
+                                            if ($current) {
+                                                $splitter = $current->componentable;
+                                                $available->prepend("{$splitter->brand} {$splitter->model} - {$splitter->ports} puertos - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                            }
+
+                                            return $available;
+                                        })
+                                        ->searchable(),
+                                ]),
+                            ]),
+                    ])
+                    ->fillForm(function ($record): array {
+                        $peripheral = $record->peripheral;
+                        
+                        $data = [
+                            'motherboard_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Motherboard')?->id,
+                            'cpu_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\CPU')?->id,
+                            'gpu_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\GPU')?->id,
+                            'power_supply_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply')?->id,
+                            'tower_case_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\TowerCase')?->id,
+                            'network_adapter_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter')?->id,
+                            'rams' => $record->components
+                                ->where('componentable_type', 'App\Models\RAM')
+                                ->map(fn($c) => ['component_id' => $c->id])
+                                ->toArray(),
+                            'roms' => $record->components
+                                ->where('componentable_type', 'App\Models\ROM')
+                                ->map(fn($c) => ['component_id' => $c->id])
+                                ->toArray(),
+                        ];
+
+                        // Cargar periféricos si existen
+                        if ($peripheral) {
+                            $data['monitors'] = $peripheral->components
+                                ->where('componentable_type', 'App\Models\Monitor')
+                                ->map(fn($c) => ['component_id' => $c->id])
+                                ->toArray();
+                            $data['keyboard_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\Keyboard')?->id;
+                            $data['mouse_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\Mouse')?->id;
+                            $data['audio_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\AudioDevice')?->id;
+                            $data['stabilizer_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\Stabilizer')?->id;
+                            $data['splitter_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\Splitter')?->id;
+                        }
+
+                        return $data;
+                    })
+                    ->action(function ($record, array $data): void {
+                        // Actualizar solo componentes internos de hardware
+                        $componentData = [
+                            'motherboard' => $data['motherboard_component_id'] ?? null,
+                            'cpu' => $data['cpu_component_id'] ?? null,
+                            'gpu' => $data['gpu_component_id'] ?? null,
+                            'power_supply' => $data['power_supply_component_id'] ?? null,
+                            'tower_case' => $data['tower_case_component_id'] ?? null,
+                            'network_adapter' => $data['network_adapter_component_id'] ?? null,
+                            'rams' => $data['rams'] ?? [],
+                            'roms' => $data['roms'] ?? [],
+                        ];
+
+                        // Obtener componentes actuales para comparar
+                        $currentComponents = [
+                            'motherboard' => $record->components->firstWhere('componentable_type', 'App\Models\Motherboard')?->id,
+                            'cpu' => $record->components->firstWhere('componentable_type', 'App\Models\CPU')?->id,
+                            'gpu' => $record->components->firstWhere('componentable_type', 'App\Models\GPU')?->id,
+                            'power_supply' => $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply')?->id,
+                            'tower_case' => $record->components->firstWhere('componentable_type', 'App\Models\TowerCase')?->id,
+                            'network_adapter' => $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter')?->id,
+                            'rams' => $record->components->where('componentable_type', 'App\Models\RAM')->pluck('id')->toArray(),
+                            'roms' => $record->components->where('componentable_type', 'App\Models\ROM')->pluck('id')->toArray(),
+                        ];
+
+                        // Identificar componentes que fueron REMOVIDOS (estaban antes pero ya no están)
+                        $componentsToRemove = [];
+
+                        // Componentes individuales
+                        foreach (['motherboard', 'cpu', 'gpu', 'power_supply', 'tower_case', 'network_adapter'] as $type) {
+                            $currentId = $currentComponents[$type];
+                            $newId = $componentData[$type];
+                            
+                            // Si había uno y cambió (o se quitó), marcarlo como removido
+                            if ($currentId && $currentId != $newId) {
+                                $componentsToRemove[] = $currentId;
+                            }
+                        }
+
+                        // RAMs - marcar como removidos los que ya no están en la lista
+                        $newRamIds = array_column($componentData['rams'], 'component_id');
+                        foreach ($currentComponents['rams'] as $currentRamId) {
+                            if (!in_array($currentRamId, $newRamIds)) {
+                                $componentsToRemove[] = $currentRamId;
+                            }
+                        }
+
+                        // ROMs - marcar como removidos los que ya no están en la lista
+                        $newRomIds = array_column($componentData['roms'], 'component_id');
+                        foreach ($currentComponents['roms'] as $currentRomId) {
+                            if (!in_array($currentRomId, $newRomIds)) {
+                                $componentsToRemove[] = $currentRomId;
+                            }
+                        }
+
+                        // Marcar SOLO los componentes que realmente fueron removidos
+                        if (!empty($componentsToRemove)) {
+                            $record->components()->updateExistingPivot($componentsToRemove, [
+                                'status' => 'Removido',
+                                'removed_by' => Auth::id(),
+                            ]);
+                        }
+
+                        // Asignar nuevos componentes o actualizar los que se mantienen
+                        $pivotData = [
+                            'assigned_at' => now(),
+                            'status' => 'Vigente',
+                            'assigned_by' => Auth::id(),
+                        ];
+
+                        // Componentes individuales
+                        $singleComponents = [
+                            $componentData['motherboard'],
+                            $componentData['cpu'],
+                            $componentData['gpu'],
+                            $componentData['power_supply'],
+                            $componentData['tower_case'],
+                            $componentData['network_adapter'],
+                        ];
+
+                        foreach ($singleComponents as $componentId) {
+                            if ($componentId) {
+                                $exists = $record->allComponents()->wherePivot('component_id', $componentId)->exists();
+                                if ($exists) {
+                                    $record->components()->updateExistingPivot($componentId, $pivotData);
+                                } else {
+                                    $record->components()->attach($componentId, $pivotData);
+                                }
+                            }
+                        }
+
+                        // RAMs
+                        foreach ($componentData['rams'] as $ram) {
+                            if (isset($ram['component_id'])) {
+                                $exists = $record->allComponents()->wherePivot('component_id', $ram['component_id'])->exists();
+                                if ($exists) {
+                                    $record->components()->updateExistingPivot($ram['component_id'], $pivotData);
+                                } else {
+                                    $record->components()->attach($ram['component_id'], $pivotData);
+                                }
+                            }
+                        }
+
+                        // ROMs
+                        foreach ($componentData['roms'] as $rom) {
+                            if (isset($rom['component_id'])) {
+                                $exists = $record->allComponents()->wherePivot('component_id', $rom['component_id'])->exists();
+                                if ($exists) {
+                                    $record->components()->updateExistingPivot($rom['component_id'], $pivotData);
+                                } else {
+                                    $record->components()->attach($rom['component_id'], $pivotData);
+                                }
+                            }
+                        }
+
+                        // Manejar periféricos
+                        $peripheralComponentData = [
+                            'monitors' => $data['monitors'] ?? [],
+                            'keyboard' => $data['keyboard_component_id'] ?? null,
+                            'mouse' => $data['mouse_component_id'] ?? null,
+                            'audio' => $data['audio_component_id'] ?? null,
+                            'stabilizer' => $data['stabilizer_component_id'] ?? null,
+                            'splitter' => $data['splitter_component_id'] ?? null,
+                        ];
+
+                        $hasPeripherals = !empty(array_filter($peripheralComponentData['monitors'])) ||
+                                        $peripheralComponentData['keyboard'] ||
+                                        $peripheralComponentData['mouse'] ||
+                                        $peripheralComponentData['audio'] ||
+                                        $peripheralComponentData['stabilizer'] ||
+                                        $peripheralComponentData['splitter'];
+
+                        if ($hasPeripherals) {
+                            if ($record->peripheral) {
+                                // Actualizar peripheral existente
+                                $peripheral = $record->peripheral;
+                                
+                                // Desvincular componentes actuales
+                                $peripheral->components()->wherePivot('status', 'Vigente')->update([
+                                    'componentables.status' => 'Removido',
+                                    'componentables.removed_by' => Auth::id(),
+                                ]);
+                                
+                                // Asignar nuevos componentes
+                                foreach ($peripheralComponentData['monitors'] as $monitor) {
+                                    if (isset($monitor['component_id'])) {
+                                        $peripheral->components()->attach($monitor['component_id'], $pivotData);
+                                    }
+                                }
+                                
+                                $singlePeripheralComponents = [
+                                    $peripheralComponentData['keyboard'],
+                                    $peripheralComponentData['mouse'],
+                                    $peripheralComponentData['audio'],
+                                    $peripheralComponentData['stabilizer'],
+                                    $peripheralComponentData['splitter'],
+                                ];
+                                
+                                foreach (array_filter($singlePeripheralComponents) as $componentId) {
+                                    if ($componentId) {
+                                        $peripheral->components()->attach($componentId, $pivotData);
+                                    }
+                                }
+                            } else {
+                                // Crear nuevo peripheral
+                                $lastPeripheral = \App\Models\Peripheral::latest('id')->first();
+                                $nextNumber = $lastPeripheral ? ($lastPeripheral->id + 1) : 1;
+                                $code = 'PER-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+                                
+                                $peripheral = \App\Models\Peripheral::create([
+                                    'code' => $code,
+                                    'location_id' => $record->location_id,
+                                    'computer_id' => $record->id,
+                                    'notes' => 'Creado desde Actualizar Computer #' . $record->id,
+                                ]);
+                                
+                                // Asignar componentes
+                                foreach ($peripheralComponentData['monitors'] as $monitor) {
+                                    if (isset($monitor['component_id'])) {
+                                        $peripheral->components()->attach($monitor['component_id'], $pivotData);
+                                    }
+                                }
+                                
+                                $singlePeripheralComponents = [
+                                    $peripheralComponentData['keyboard'],
+                                    $peripheralComponentData['mouse'],
+                                    $peripheralComponentData['audio'],
+                                    $peripheralComponentData['stabilizer'],
+                                    $peripheralComponentData['splitter'],
+                                ];
+                                
+                                foreach (array_filter($singlePeripheralComponents) as $componentId) {
+                                    if ($componentId) {
+                                        $peripheral->components()->attach($componentId, $pivotData);
+                                    }
+                                }
+                                
+                                $record->update(['peripheral_id' => $peripheral->id]);
+                            }
+                        } else {
+                            // Si no hay periféricos y existía uno, desvincularlo
+                            if ($record->peripheral) {
+                                $record->peripheral->update(['computer_id' => null]);
+                                $record->update(['peripheral_id' => null]);
+                            }
+                        }
+
+                        Notification::make()
+                            ->title('Actualizado')
+                            ->success()
+                            ->body('Componentes actualizados exitosamente.')
+                            ->send();
+                    }),
+
                 Action::make('verComponentes')
                     ->label('Ver')
                     ->icon('heroicon-o-eye')
@@ -93,22 +912,26 @@ class ComputersTable
                     ->modalSubmitAction(false)
                     ->infolist(function ($record) {
                         // Cargar componentes con sus relaciones
-                        $record->load(['components.componentable', 'os']);
+                        $record->load(['components.componentable', 'os', 'peripheral.components.componentable']);
                         
+                        // Componentes internos del CPU
                         $motherboard = $record->components->firstWhere('componentable_type', 'App\Models\Motherboard');
                         $cpu = $record->components->firstWhere('componentable_type', 'App\Models\CPU');
                         $gpu = $record->components->firstWhere('componentable_type', 'App\Models\GPU');
                         $powerSupply = $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply');
                         $towerCase = $record->components->firstWhere('componentable_type', 'App\Models\TowerCase');
                         $networkAdapter = $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter');
-                        $keyboard = $record->components->firstWhere('componentable_type', 'App\Models\Keyboard');
-                        $mouse = $record->components->firstWhere('componentable_type', 'App\Models\Mouse');
-                        $audioDevice = $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice');
-                        $stabilizer = $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer');
-                        $splitter = $record->components->firstWhere('componentable_type', 'App\Models\Splitter');
                         $rams = $record->components->where('componentable_type', 'App\Models\RAM');
                         $roms = $record->components->where('componentable_type', 'App\Models\ROM');
-                        $monitors = $record->components->where('componentable_type', 'App\Models\Monitor');
+                        
+                        // Componentes periféricos (ahora desde peripheral)
+                        $peripheral = $record->peripheral;
+                        $keyboard = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Keyboard');
+                        $mouse = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Mouse');
+                        $audioDevice = $peripheral?->components->firstWhere('componentable_type', 'App\Models\AudioDevice');
+                        $stabilizer = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Stabilizer');
+                        $splitter = $peripheral?->components->firstWhere('componentable_type', 'App\Models\Splitter');
+                        $monitors = $peripheral?->components->where('componentable_type', 'App\Models\Monitor') ?? collect();
 
                         return [
                             // SECCIÓN: SOFTWARE Y RED
@@ -140,6 +963,16 @@ class ComputersTable
                                         ->label('Dirección IP')
                                         ->state(function () use ($record) {
                                             return "<span style='color: #9ca3af;'>" . ($record->ip_address ?? 'No asignada') . "</span>";
+                                        })
+                                        ->html(),
+                                    
+                                    TextEntry::make('peripheral_info')
+                                        ->label('Periféricos Asignados')
+                                        ->state(function () use ($peripheral) {
+                                            if (!$peripheral) return "<span style='color: #9ca3af;'>Sin periféricos asignados</span>";
+                                            return "<div style='line-height: 1.8;'>" .
+                                                   "<div><span style='font-weight: 700; color: #10b981;'>Código:</span> <span style='color: #9ca3af;'>{$peripheral->code}</span></div>" .
+                                                   "</div>";
                                         })
                                         ->html(),
                                 ])
@@ -397,622 +1230,6 @@ class ComputersTable
                         ];
                     }),
 
-                Action::make('actualizarSistema')
-                    ->label('Actualizar Hardware')
-                    ->icon('heroicon-o-cpu-chip')
-                    ->color('info')
-                    ->modalHeading('Actualizar Componentes de Hardware')
-                    ->modalDescription('Modifique los componentes técnicos de la computadora')
-                    ->modalWidth('6xl')
-                    ->modalSubmitActionLabel('Guardar Cambios')
-                    ->modalCancelActionLabel('Cancelar')
-                    ->form([
-
-                        Grid::make(2)->schema([
-                            Select::make('motherboard_component_id')
-                                ->label('Placa Base')
-                                ->options(function ($record) {
-                                    $current = $record->components->firstWhere('componentable_type', 'App\Models\Motherboard');
-                                    
-                                    $available = Component::where('componentable_type', 'App\Models\Motherboard')
-                                        ->where('status', 'Operativo')
-                                        ->whereDoesntHave('computers')
-                                        ->get()
-                                        ->mapWithKeys(function ($component) {
-                                            $mb = $component->componentable;
-                                            return [$component->id => "{$mb->brand} {$mb->model} - Serial: {$component->serial}"];
-                                        });
-
-                                    if ($current) {
-                                        $mb = $current->componentable;
-                                        $available->prepend("{$mb->brand} {$mb->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                    }
-
-                                    return $available;
-                                })
-                                ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Motherboard')?->id)
-                                ->searchable()
-                                ->live(),
-
-                            Select::make('cpu_component_id')
-                                ->label('Procesador (CPU)')
-                                ->options(function (Get $get, $record) {
-                                    $motherboardComponentId = $get('motherboard_component_id');
-                                    $current = $record->components->firstWhere('componentable_type', 'App\Models\CPU');
-
-                                    // Si no hay placa base seleccionada, mostrar el actual
-                                    if (!$motherboardComponentId) {
-                                        if ($current) {
-                                            $cpu = $current->componentable;
-                                            return [$current->id => "{$cpu->brand} {$cpu->model} - Serial: {$current->serial} (ACTUAL)"];
-                                        }
-                                        return [];
-                                    }
-
-                                    $mbComponent = Component::find($motherboardComponentId);
-                                    if (!$mbComponent) {
-                                        return [];
-                                    }
-
-                                    $motherboard = $mbComponent->componentable;
-                                    $socket = $motherboard->socket;
-
-                                    $available = Component::where('componentable_type', 'App\Models\CPU')
-                                        ->where('status', 'Operativo')
-                                        ->whereDoesntHave('computers')
-                                        ->get()
-                                        ->filter(function ($component) use ($socket) {
-                                            return $component->componentable->socket === $socket;
-                                        })
-                                        ->mapWithKeys(function ($component) {
-                                            $cpu = $component->componentable;
-                                            return [$component->id => "{$cpu->brand} {$cpu->model} ({$cpu->socket}) - Serial: {$component->serial}"];
-                                        });
-
-                                    if ($current && $current->componentable->socket === $socket) {
-                                        $cpu = $current->componentable;
-                                        $available->prepend("{$cpu->brand} {$cpu->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                    }
-
-                                    return $available;
-                                })
-                                ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\CPU')?->id)
-                                ->searchable(),
-                        ]),
-                        Select::make('gpu_component_id')
-                            ->label('Tarjeta Gráfica (GPU)')
-                            ->options(function ($record) {
-                                $current = $record->components->firstWhere('componentable_type', 'App\Models\GPU');
-                                
-                                $available = Component::where('componentable_type', 'App\Models\GPU')
-                                    ->where('status', 'Operativo')
-                                    ->whereDoesntHave('computers')
-                                    ->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $gpu = $component->componentable;
-                                        return [$component->id => "{$gpu->brand} {$gpu->model} - {$gpu->vram}GB - Serial: {$component->serial}"];
-                                    });
-
-                                if ($current) {
-                                    $gpu = $current->componentable;
-                                    $available->prepend("{$gpu->brand} {$gpu->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                }
-
-                                return $available;
-                            })
-                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\GPU')?->id)
-                            ->searchable(),
-
-                        Grid::make(2)->schema([
-                        Repeater::make('rams')
-                            ->label('Memorias RAM')
-                            ->schema([
-                                Select::make('component_id')
-                                    ->label('RAM')
-                                    ->options(function ($record) {
-                                        // Obtener IDs de componentes RAM actualmente asignados a esta computadora
-                                        $currentRamIds = $record->components()
-                                            ->where('components.componentable_type', 'App\Models\RAM')
-                                            ->pluck('components.id')
-                                            ->toArray();
-                                        
-                                        // Obtener todos los componentes RAM operativos que:
-                                        // 1. No están asignados a ninguna computadora (whereDoesntHave)
-                                        // 2. O están asignados a ESTA computadora
-                                        $availableRams = Component::where('componentable_type', 'App\Models\RAM')
-                                            ->where('status', 'Operativo')
-                                            ->where(function ($query) use ($currentRamIds) {
-                                                $query->whereDoesntHave('computers')
-                                                    ->orWhereIn('id', $currentRamIds);
-                                            })
-                                            ->get();
-                                        
-                                        return $availableRams->mapWithKeys(function ($component) use ($currentRamIds) {
-                                            $ram = $component->componentable;
-                                            $label = "{$ram->brand} {$ram->model} - {$ram->capacity}GB - Serial: {$component->serial}";
-                                            if (in_array($component->id, $currentRamIds)) {
-                                                $label .= " (ACTUAL)";
-                                            }
-                                            return [$component->id => $label];
-                                        });
-                                    })
-                                    ->searchable()
-                                    ->required()
-                                    ->distinct(),
-                            ])
-                            ->minItems(1)
-                            ->addActionLabel('Agregar RAM')
-                            ->collapsible()
-                            ->collapsed(),
-
-                        Repeater::make('roms')
-                            ->label('Almacenamiento')
-                            ->schema([
-                                Select::make('component_id')
-                                    ->label('ROM')
-                                    ->options(function ($record) {
-                                        // Obtener IDs de componentes ROM actualmente asignados a esta computadora
-                                        $currentRomIds = $record->components()
-                                            ->where('components.componentable_type', 'App\Models\ROM')
-                                            ->pluck('components.id')
-                                            ->toArray();
-                                        
-                                        // Obtener todos los componentes ROM operativos que:
-                                        // 1. No están asignados a ninguna computadora
-                                        // 2. O están asignados a ESTA computadora
-                                        $availableRoms = Component::where('componentable_type', 'App\Models\ROM')
-                                            ->where('status', 'Operativo')
-                                            ->where(function ($query) use ($currentRomIds) {
-                                                $query->whereDoesntHave('computers')
-                                                    ->orWhereIn('id', $currentRomIds);
-                                            })
-                                            ->get();
-                                        
-                                        return $availableRoms->mapWithKeys(function ($component) use ($currentRomIds) {
-                                            $rom = $component->componentable;
-                                            $label = "{$rom->brand} {$rom->model} - {$rom->capacity}GB - Serial: {$component->serial}";
-                                            if (in_array($component->id, $currentRomIds)) {
-                                                $label .= " (ACTUAL)";
-                                            }
-                                            return [$component->id => $label];
-                                        });
-                                    })
-                                    ->searchable()
-                                    ->required()
-                                    ->distinct(),
-                            ])
-                            ->minItems(1)
-                            ->addActionLabel('Agregar Almacenamiento')
-                            ->collapsible()
-                            ->collapsed(),
-                                ]),
-                        Grid::make(2)->schema
-                        ([        
-                        Select::make('power_supply_component_id')
-                            ->label('Fuente de Poder')
-                            ->options(function ($record) {
-                                $current = $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply');
-                                
-                                $available = Component::where('componentable_type', 'App\Models\PowerSupply')
-                                    ->where('status', 'Operativo')
-                                    ->whereDoesntHave('computers')
-                                    ->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $ps = $component->componentable;
-                                        return [$component->id => "{$ps->brand} {$ps->model} - {$ps->power}W - Serial: {$component->serial}"];
-                                    });
-
-                                if ($current) {
-                                    $ps = $current->componentable;
-                                    $available->prepend("{$ps->brand} {$ps->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                }
-
-                                return $available;
-                            })
-                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply')?->id)
-                            ->searchable(),
-
-                        Select::make('tower_case_component_id')
-                            ->label('Gabinete/Case')
-                            ->options(function ($record) {
-                                $current = $record->components->firstWhere('componentable_type', 'App\Models\TowerCase');
-                                
-                                $available = Component::where('componentable_type', 'App\Models\TowerCase')
-                                    ->where('status', 'Operativo')
-                                    ->whereDoesntHave('computers')
-                                    ->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $case = $component->componentable;
-                                        return [$component->id => "{$case->brand} {$case->model} - Serial: {$component->serial}"];
-                                    });
-
-                                if ($current) {
-                                    $case = $current->componentable;
-                                    $available->prepend("{$case->brand} {$case->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                }
-
-                                return $available;
-                            })
-                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\TowerCase')?->id)
-                            ->searchable(),
-                        ]),
-                        
-                        Repeater::make('monitors')
-                        ->label('Monitores')
-                            ->schema([
-                                Select::make('component_id')
-                                    ->label('Monitor')
-                                    ->options(function ($record) {
-                                        $currentMonitorIds = $record->components()
-                                            ->where('components.componentable_type', 'App\Models\Monitor')
-                                            ->pluck('components.id')
-                                            ->toArray();
-                                        
-                                        $availableMonitors = Component::where('componentable_type', 'App\Models\Monitor')
-                                            ->where('status', 'Operativo')
-                                            ->where(function ($query) use ($currentMonitorIds) {
-                                                $query->whereDoesntHave('computers')
-                                                    ->orWhereIn('id', $currentMonitorIds);
-                                            })
-                                            ->get();
-                                        
-                                        return $availableMonitors->mapWithKeys(function ($component) use ($currentMonitorIds) {
-                                            $monitor = $component->componentable;
-                                            $label = "{$monitor->brand} {$monitor->model} - {$monitor->screen_size}\" - Serial: {$component->serial}";
-                                            if (in_array($component->id, $currentMonitorIds)) {
-                                                $label .= " (ACTUAL)";
-                                            }
-                                            return [$component->id => $label];
-                                        });
-                                    })
-                                    ->searchable()
-                                    ->required()
-                                    ->distinct(),
-                            ])
-                            ->addActionLabel('Agregar Monitor')
-                            ->collapsible()
-                            ->collapsed(),
-
-                        Grid::make(2)
-                             ->schema([
-                                Select::make('keyboard_component_id')
-                                    ->label('Teclado')
-                                    ->options(function ($record) {
-                                        $current = $record->components->firstWhere('componentable_type', 'App\Models\Keyboard');
-                                        
-                                        $available = Component::where('componentable_type', 'App\Models\Keyboard')
-                                            ->where('status', 'Operativo')
-                                            ->whereDoesntHave('computers')
-                                            ->get()
-                                            ->mapWithKeys(function ($component) {
-                                                $kb = $component->componentable;
-                                                return [$component->id => "{$kb->brand} {$kb->model} - Serial: {$component->serial}"];
-                                            });
-
-                                        if ($current) {
-                                            $kb = $current->componentable;
-                                            $available->prepend("{$kb->brand} {$kb->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                        }
-                                        
-                                        return $available;
-                                    })
-                                    ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Keyboard')?->id)
-                                    ->searchable(),
-
-                                Select::make('mouse_component_id')
-                                    ->label('Mouse')
-                                    ->options(function ($record) {
-                                        $current = $record->components->firstWhere('componentable_type', 'App\Models\Mouse');
-                                        
-                                        $available = Component::where('componentable_type', 'App\Models\Mouse')
-                                            ->where('status', 'Operativo')
-                                            ->whereDoesntHave('computers')
-                                            ->get()
-                                            ->mapWithKeys(function ($component) {
-                                                $mouse = $component->componentable;
-                                                return [$component->id => "{$mouse->brand} {$mouse->model} - Serial: {$component->serial}"];
-                                            });
-
-                                        if ($current) {
-                                            $mouse = $current->componentable;
-                                            $available->prepend("{$mouse->brand} {$mouse->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                        }
-
-                                        return $available;
-                                    })
-                                    ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Mouse')?->id)
-                                    ->searchable()]),
-
-                                Grid::make(2)->schema([
-
-
-                                    Select::make('audio_device_component_id')
-                                        ->label('Dispositivo de Audio')
-                                        ->options(function ($record) {
-                                            $current = $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice');
-                                            
-                                            $available = Component::where('componentable_type', 'App\Models\AudioDevice')
-                                                ->where('status', 'Operativo')
-                                                ->whereDoesntHave('computers')
-                                                ->get()
-                                                ->mapWithKeys(function ($component) {
-                                                    $audio = $component->componentable;
-                                                    return [$component->id => "{$audio->brand} {$audio->model} - Serial: {$component->serial}"];
-                                                });
-                                                
-                                                if ($current) {
-                                                    $audio = $current->componentable;
-                                                    $available->prepend("{$audio->brand} {$audio->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                                }
-                                                
-                                                return $available;
-                                            })
-                                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice')?->id)
-                                            ->searchable(),
-
-
-                                    Select::make('network_adapter_component_id')
-                                        ->label('Adaptador de Red')
-                                        ->options(function ($record) {
-                                            $current = $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter');
-                                            
-                                            $available = Component::where('componentable_type', 'App\Models\NetworkAdapter')
-                                                ->where('status', 'Operativo')
-                                                ->whereDoesntHave('computers')
-                                                ->get()
-                                                ->mapWithKeys(function ($component) {
-                                                    $net = $component->componentable;
-                                                    return [$component->id => "{$net->brand} {$net->model} - Serial: {$component->serial}"];
-                                                });
-            
-                                            if ($current) {
-                                                $net = $current->componentable;
-                                                $available->prepend("{$net->brand} {$net->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                            }
-            
-                                            return $available;
-                                        })
-                                        ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter')?->id)
-                                        ->searchable()
-                                        
-                                    ]),
-
-                        Grid::make(2)->schema([
-
-                        Select::make('stabilizer_component_id')
-                            ->label('Estabilizador')
-                            ->options(function ($record) {
-                                $current = $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer');
-                                
-                                // Los estabilizadores pueden estar asignados a múltiples dispositivos
-                                $available = Component::where('componentable_type', 'App\Models\Stabilizer')
-                                    ->where('status', 'Operativo')
-                                    ->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $stab = $component->componentable;
-                                        return [$component->id => "{$stab->brand} {$stab->model} - {$stab->power}VA - Serial: {$component->serial}"];
-                                    });
-
-                                if ($current) {
-                                    $stab = $current->componentable;
-                                    $available->prepend("{$stab->brand} {$stab->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                }
-
-                                return $available;
-                            })
-                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer')?->id)
-                            ->searchable(),
-
-                        Select::make('splitter_component_id')
-                            ->label('Multicontacto/Splitter')
-                            ->options(function ($record) {
-                                $current = $record->components->firstWhere('componentable_type', 'App\Models\Splitter');
-                                
-                                $available = Component::where('componentable_type', 'App\Models\Splitter')
-                                    ->where('status', 'Operativo')
-                                    ->whereDoesntHave('computers')
-                                    ->get()
-                                    ->mapWithKeys(function ($component) {
-                                        $split = $component->componentable;
-                                        return [$component->id => "{$split->brand} {$split->model} - {$split->outlets} tomas - Serial: {$component->serial}"];
-                                    });
-
-                                if ($current) {
-                                    $split = $current->componentable;
-                                    $available->prepend("{$split->brand} {$split->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
-                                }
-
-                                return $available;
-                            })
-                            ->default(fn ($record) => $record->components->firstWhere('componentable_type', 'App\Models\Splitter')?->id)
-                            ->searchable()]),
-                    ])
-                    ->fillForm(function ($record): array {
-                        return [
-                            'motherboard_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Motherboard')?->id,
-                            'cpu_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\CPU')?->id,
-                            'gpu_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\GPU')?->id,
-                            'power_supply_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply')?->id,
-                            'tower_case_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\TowerCase')?->id,
-                            'network_adapter_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter')?->id,
-                            'keyboard_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Keyboard')?->id,
-                            'mouse_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Mouse')?->id,
-                            'audio_device_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice')?->id,
-                            'stabilizer_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer')?->id,
-                            'splitter_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Splitter')?->id,
-                            'rams' => $record->components
-                                ->where('componentable_type', 'App\Models\RAM')
-                                ->map(fn($c) => ['component_id' => $c->id])
-                                ->toArray(),
-                            'roms' => $record->components
-                                ->where('componentable_type', 'App\Models\ROM')
-                                ->map(fn($c) => ['component_id' => $c->id])
-                                ->toArray(),
-                            'monitors' => $record->components
-                                ->where('componentable_type', 'App\Models\Monitor')
-                                ->map(fn($c) => ['component_id' => $c->id])
-                                ->toArray(),
-                        ];
-                    })
-                    ->action(function ($record, array $data): void {
-                        // Actualizar solo componentes de hardware
-                        $componentData = [
-                            'motherboard' => $data['motherboard_component_id'] ?? null,
-                            'cpu' => $data['cpu_component_id'] ?? null,
-                            'gpu' => $data['gpu_component_id'] ?? null,
-                            'power_supply' => $data['power_supply_component_id'] ?? null,
-                            'tower_case' => $data['tower_case_component_id'] ?? null,
-                            'network_adapter' => $data['network_adapter_component_id'] ?? null,
-                            'keyboard' => $data['keyboard_component_id'] ?? null,
-                            'mouse' => $data['mouse_component_id'] ?? null,
-                            'audio_device' => $data['audio_device_component_id'] ?? null,
-                            'stabilizer' => $data['stabilizer_component_id'] ?? null,
-                            'splitter' => $data['splitter_component_id'] ?? null,
-                            'rams' => $data['rams'] ?? [],
-                            'roms' => $data['roms'] ?? [],
-                            'monitors' => $data['monitors'] ?? [],
-                        ];
-
-                        // Obtener componentes actuales para comparar
-                        $currentComponents = [
-                            'motherboard' => $record->components->firstWhere('componentable_type', 'App\Models\Motherboard')?->id,
-                            'cpu' => $record->components->firstWhere('componentable_type', 'App\Models\CPU')?->id,
-                            'gpu' => $record->components->firstWhere('componentable_type', 'App\Models\GPU')?->id,
-                            'power_supply' => $record->components->firstWhere('componentable_type', 'App\Models\PowerSupply')?->id,
-                            'tower_case' => $record->components->firstWhere('componentable_type', 'App\Models\TowerCase')?->id,
-                            'network_adapter' => $record->components->firstWhere('componentable_type', 'App\Models\NetworkAdapter')?->id,
-                            'keyboard' => $record->components->firstWhere('componentable_type', 'App\Models\Keyboard')?->id,
-                            'mouse' => $record->components->firstWhere('componentable_type', 'App\Models\Mouse')?->id,
-                            'audio_device' => $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice')?->id,
-                            'stabilizer' => $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer')?->id,
-                            'splitter' => $record->components->firstWhere('componentable_type', 'App\Models\Splitter')?->id,
-                            'rams' => $record->components->where('componentable_type', 'App\Models\RAM')->pluck('id')->toArray(),
-                            'roms' => $record->components->where('componentable_type', 'App\Models\ROM')->pluck('id')->toArray(),
-                            'monitors' => $record->components->where('componentable_type', 'App\Models\Monitor')->pluck('id')->toArray(),
-                        ];
-
-                        // Identificar componentes que fueron REMOVIDOS (estaban antes pero ya no están)
-                        $componentsToRemove = [];
-
-                        // Componentes individuales
-                        foreach (['motherboard', 'cpu', 'gpu', 'power_supply', 'tower_case', 'network_adapter', 'keyboard', 'mouse', 'audio_device', 'stabilizer', 'splitter'] as $type) {
-                            $currentId = $currentComponents[$type];
-                            $newId = $componentData[$type];
-                            
-                            // Si había uno y cambió (o se quitó), marcarlo como removido
-                            if ($currentId && $currentId != $newId) {
-                                $componentsToRemove[] = $currentId;
-                            }
-                        }
-
-                        // RAMs - marcar como removidos los que ya no están en la lista
-                        $newRamIds = array_column($componentData['rams'], 'component_id');
-                        foreach ($currentComponents['rams'] as $currentRamId) {
-                            if (!in_array($currentRamId, $newRamIds)) {
-                                $componentsToRemove[] = $currentRamId;
-                            }
-                        }
-
-                        // ROMs - marcar como removidos los que ya no están en la lista
-                        $newRomIds = array_column($componentData['roms'], 'component_id');
-                        foreach ($currentComponents['roms'] as $currentRomId) {
-                            if (!in_array($currentRomId, $newRomIds)) {
-                                $componentsToRemove[] = $currentRomId;
-                            }
-                        }
-
-                        // Monitors - marcar como removidos los que ya no están en la lista
-                        $newMonitorIds = array_column($componentData['monitors'], 'component_id');
-                        foreach ($currentComponents['monitors'] as $currentMonitorId) {
-                            if (!in_array($currentMonitorId, $newMonitorIds)) {
-                                $componentsToRemove[] = $currentMonitorId;
-                            }
-                        }
-
-                        // Marcar SOLO los componentes que realmente fueron removidos
-                        if (!empty($componentsToRemove)) {
-                            $record->components()->updateExistingPivot($componentsToRemove, [
-                                'status' => 'Removido',
-                                'removed_by' => Auth::id(),
-                            ]);
-                        }
-
-                        // Asignar nuevos componentes o actualizar los que se mantienen
-                        $pivotData = [
-                            'assigned_at' => now(),
-                            'status' => 'Vigente',
-                            'assigned_by' => Auth::id(),
-                        ];
-
-                        // Componentes individuales
-                        $singleComponents = [
-                            $componentData['motherboard'],
-                            $componentData['cpu'],
-                            $componentData['gpu'],
-                            $componentData['power_supply'],
-                            $componentData['tower_case'],
-                            $componentData['network_adapter'],
-                            $componentData['keyboard'],
-                            $componentData['mouse'],
-                            $componentData['audio_device'],
-                            $componentData['stabilizer'],
-                            $componentData['splitter'],
-                        ];
-
-                        foreach ($singleComponents as $componentId) {
-                            if ($componentId) {
-                                $exists = $record->allComponents()->wherePivot('component_id', $componentId)->exists();
-                                if ($exists) {
-                                    $record->components()->updateExistingPivot($componentId, $pivotData);
-                                } else {
-                                    $record->components()->attach($componentId, $pivotData);
-                                }
-                            }
-                        }
-
-                        // RAMs
-                        foreach ($componentData['rams'] as $ram) {
-                            if (isset($ram['component_id'])) {
-                                $exists = $record->allComponents()->wherePivot('component_id', $ram['component_id'])->exists();
-                                if ($exists) {
-                                    $record->components()->updateExistingPivot($ram['component_id'], $pivotData);
-                                } else {
-                                    $record->components()->attach($ram['component_id'], $pivotData);
-                                }
-                            }
-                        }
-
-                        // ROMs
-                        foreach ($componentData['roms'] as $rom) {
-                            if (isset($rom['component_id'])) {
-                                $exists = $record->allComponents()->wherePivot('component_id', $rom['component_id'])->exists();
-                                if ($exists) {
-                                    $record->components()->updateExistingPivot($rom['component_id'], $pivotData);
-                                } else {
-                                    $record->components()->attach($rom['component_id'], $pivotData);
-                                }
-                            }
-                        }
-
-                        // Monitores
-                        foreach ($componentData['monitors'] as $monitor) {
-                            if (isset($monitor['component_id'])) {
-                                $exists = $record->allComponents()->wherePivot('component_id', $monitor['component_id'])->exists();
-                                if ($exists) {
-                                    $record->components()->updateExistingPivot($monitor['component_id'], $pivotData);
-                                } else {
-                                    $record->components()->attach($monitor['component_id'], $pivotData);
-                                }
-                            }
-                        }
-
-                        Notification::make()
-                            ->title('Hardware actualizado')
-                            ->success()
-                            ->body('Todos los componentes de hardware han sido actualizados exitosamente.')
-                            ->send();
-                    }),
-
                 Action::make('verHistorial')
                     ->label('Historial')
                     ->icon('heroicon-o-clock')
@@ -1070,39 +1287,6 @@ class ComputersTable
                                 'id' => $record->id,
                             ])),
                     ]),
-
-                Action::make('desmantelar')
-                    ->label('Desmantelar')
-                    ->icon('heroicon-o-wrench-screwdriver')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('Desmantelar Computadora')
-                    ->modalDescription(fn ($record) => "¿Está seguro de desmantelar la computadora {$record->serial}? Todos los componentes vigentes serán removidos y la computadora pasará al estado 'Desmantelado'.")
-                    ->modalSubmitActionLabel('Sí, desmantelar')
-                    ->modalCancelActionLabel('Cancelar')
-                    ->visible(fn ($record) => $record->status === 'Inactivo')
-                    ->action(function ($record) {
-                        DB::transaction(function () use ($record) {
-                            // Actualizar todos los componentes vigentes a "Removido"
-                            DB::table('componentables')
-                                ->where('componentable_type', 'App\\Models\\Computer')
-                                ->where('componentable_id', $record->id)
-                                ->where('status', 'Vigente')
-                                ->update([
-                                    'status' => 'Removido',
-                                    'updated_at' => now()
-                                ]);
-                            
-                            // Cambiar el estado de la computadora a Desmantelado
-                            $record->update(['status' => 'Desmantelado']);
-                        });
-                        
-                        Notification::make()
-                            ->title('Computadora desmantelada')
-                            ->success()
-                            ->body("La computadora {$record->serial} ha sido desmantelada exitosamente.")
-                            ->send();
-                    }),
 
                 EditAction::make()
                     ->label('Editar'),

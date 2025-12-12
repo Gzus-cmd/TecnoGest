@@ -17,6 +17,7 @@ use UnitEnum;
 
 class AudioDeviceResource extends Resource
 {
+
     protected static ?string $model = AudioDevice::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSpeakerWave;

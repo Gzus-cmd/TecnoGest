@@ -18,6 +18,7 @@ use UnitEnum;
 
 class MaintenanceResource extends Resource
 {
+
     protected static ?string $model = Maintenance::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;

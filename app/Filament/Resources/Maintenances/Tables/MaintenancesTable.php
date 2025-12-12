@@ -42,9 +42,14 @@ class MaintenancesTable
                 TextColumn::make('type')
                     ->label('Tipo de Mantenimiento')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'Preventivo' => 'Preventivo',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'Preventivo' => 'warning',
                         'Correctivo' => 'danger',
+                        default => 'gray',
                     }),
                 TextColumn::make('status')
                     ->label('Estado')
@@ -98,24 +103,73 @@ class MaintenancesTable
                     ->multiple()
                     ->label('Tipo de Dispositivo'),
                 
-                Filter::make('deviceable_id')
-                    ->form([
-                        \Filament\Forms\Components\TextInput::make('value')
-                            ->label('ID del Dispositivo')
-                            ->placeholder('Ingrese el ID')
-                            ->numeric(),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when(
-                            $data['value'],
-                            fn (Builder $query, $value): Builder => $query->where('deviceable_id', $value)
-                        );
-                    })
-                    ->indicateUsing(function (array $data): ?string {
-                        if (!$data['value']) {
-                            return null;
+                SelectFilter::make('deviceable')
+                    ->label('Dispositivo Específico')
+                    ->searchable()
+                    ->getSearchResultsUsing(function (string $search) {
+                        $results = [];
+                        
+                        // Buscar computadoras
+                        $computers = \App\Models\Computer::where('serial', 'like', "%{$search}%")
+                            ->limit(10)
+                            ->get();
+                        foreach ($computers as $computer) {
+                            $results["computer-{$computer->id}"] = "Computadora: {$computer->serial}";
                         }
-                        return 'Dispositivo ID: ' . $data['value'];
+                        
+                        // Buscar impresoras
+                        $printers = \App\Models\Printer::where('serial', 'like', "%{$search}%")
+                            ->limit(10)
+                            ->get();
+                        foreach ($printers as $printer) {
+                            $results["printer-{$printer->id}"] = "Impresora: {$printer->serial}";
+                        }
+                        
+                        // Buscar proyectores
+                        $projectors = \App\Models\Projector::where('serial', 'like', "%{$search}%")
+                            ->limit(10)
+                            ->get();
+                        foreach ($projectors as $projector) {
+                            $results["projector-{$projector->id}"] = "Proyector: {$projector->serial}";
+                        }
+                        
+                        return $results;
+                    })
+                    ->getOptionLabelUsing(function ($value) {
+                        if (!$value) return null;
+                        
+                        [$type, $id] = explode('-', $value);
+                        
+                        if ($type === 'computer') {
+                            $device = \App\Models\Computer::find($id);
+                            return $device ? "Computadora: {$device->serial}" : null;
+                        } elseif ($type === 'printer') {
+                            $device = \App\Models\Printer::find($id);
+                            return $device ? "Impresora: {$device->serial}" : null;
+                        } elseif ($type === 'projector') {
+                            $device = \App\Models\Projector::find($id);
+                            return $device ? "Proyector: {$device->serial}" : null;
+                        }
+                        
+                        return null;
+                    })
+                    ->query(function (Builder $query, $value) {
+                        if (!$value) return $query;
+                        
+                        [$type, $id] = explode('-', $value);
+                        
+                        if ($type === 'computer') {
+                            return $query->where('deviceable_type', 'App\Models\Computer')
+                                ->where('deviceable_id', $id);
+                        } elseif ($type === 'printer') {
+                            return $query->where('deviceable_type', 'App\Models\Printer')
+                                ->where('deviceable_id', $id);
+                        } elseif ($type === 'projector') {
+                            return $query->where('deviceable_type', 'App\Models\Projector')
+                                ->where('deviceable_id', $id);
+                        }
+                        
+                        return $query;
                     }),
                     
                 Filter::make('created_at')

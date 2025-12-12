@@ -17,6 +17,7 @@ use UnitEnum;
 
 class MotherboardResource extends Resource
 {
+
     protected static ?string $model = Motherboard::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQrCode;

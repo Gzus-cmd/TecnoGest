@@ -22,6 +22,7 @@ use Filament\Forms\Components\DatePicker;
 
 class ComponentHistoryResource extends Resource
 {
+
     protected static ?string $model = Component::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
@@ -286,6 +287,7 @@ class ComponentHistoryResource extends Resource
             ->recordActions([])
             ->toolbarActions([
                 \Filament\Actions\Action::make('exportExcel')
+                    ->visible(fn () => \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin')
                     ->label('Exportar Excel')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
@@ -300,6 +302,7 @@ class ComponentHistoryResource extends Resource
                     }),
                 
                 \Filament\Actions\Action::make('exportCsv')
+                    ->visible(fn () => \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin')
                     ->label('Exportar CSV')
                     ->icon('heroicon-o-document-text')
                     ->color('info')

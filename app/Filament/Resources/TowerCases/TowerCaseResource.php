@@ -17,6 +17,7 @@ use UnitEnum;
 
 class TowerCaseResource extends Resource
 {
+
     protected static ?string $model = TowerCase::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleGroup;

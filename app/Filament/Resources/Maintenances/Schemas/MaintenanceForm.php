@@ -6,6 +6,7 @@ use App\Models\Computer;
 use App\Models\Location;
 use App\Models\Printer;
 use App\Models\Projector;
+use App\Models\Peripheral;
 use Filament\Forms\Components\MorphToSelect;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -14,6 +15,7 @@ use Filament\Forms\Components\Checkbox;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+
 
 class MaintenanceForm
 {
@@ -28,22 +30,25 @@ class MaintenanceForm
             ->label($label)
             ->getSearchResultsUsing(function (string $search) use ($modelClass): array {
                 return $modelClass::query()
-                    ->where('serial', 'like', "%{$search}%")
-                    ->orWhereHas('location', function ($query) use ($search) {
-                        $query->where('pavilion', 'like', "%{$search}%")
-                            ->orWhere('name', 'like', "%{$search}%");
+                    ->whereIn('status', ['Activo', 'Inactivo'])
+                    ->where(function ($query) use ($search) {
+                        $query->where('serial', 'like', "%{$search}%")
+                            ->orWhereHas('location', function ($q) use ($search) {
+                                $q->where('pavilion', 'like', "%{$search}%")
+                                    ->orWhere('name', 'like', "%{$search}%");
+                            });
                     })
                     ->with('location')
                     ->limit(50)
                     ->get()
                     ->mapWithKeys(fn ($record) => [
-                        $record->getKey() => "{$record->serial} | {$record->location->pavilion} - {$record->location->name}"
+                        $record->getKey() => "{$record->serial} [{$record->status}] | {$record->location->pavilion} - {$record->location->name}"
                     ])
                     ->toArray();
             })
             ->getOptionLabelUsing(function ($value) use ($modelClass): ?string {
                 $record = $modelClass::with('location')->find($value);
-                return $record ? "{$record->serial} | {$record->location->pavilion} - {$record->location->name}" : null;
+                return $record ? "{$record->serial} [{$record->status}] | {$record->location->pavilion} - {$record->location->name}" : null;
             });
     }
 
@@ -103,6 +108,7 @@ class MaintenanceForm
                                 self::makeSearchableDeviceType(Computer::class, 'Computadora'),
                                 self::makeSearchableDeviceType(Printer::class, 'Impresora'),
                                 self::makeSearchableDeviceType(Projector::class, 'Proyector'),
+                                self::makeSearchableDeviceType(Peripheral::class, 'Periférico'),
                             ])
                             ->label('Seleccionar Dispositivo')
                             ->searchable()
@@ -114,7 +120,6 @@ class MaintenanceForm
                     ->schema([
                         Textarea::make('description')
                             ->label('Descripción del Mantenimiento')
-                            ->required()
                             ->placeholder('Describa el trabajo realizado...')
                             ->columnSpanFull(),
                     ]),

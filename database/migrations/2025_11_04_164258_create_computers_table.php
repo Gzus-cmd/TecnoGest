@@ -18,6 +18,7 @@ return new class extends Migration
             $table->enum('status', ['Activo', 'Inactivo', 'En Mantenimiento', 'Desmantelado']);
             $table->string('ip_address')->nullable();
             $table->foreignId('os_id')->constrained('o_s')->onDelete('cascade');
+            $table->foreignId('peripheral_id')->nullable()->index();
             $table->timestamps();
         });
     }

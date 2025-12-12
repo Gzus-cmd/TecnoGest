@@ -17,6 +17,7 @@ use UnitEnum;
 
 class PrinterModelResource extends Resource
 {
+
     protected static ?string $model = PrinterModel::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPrinter;

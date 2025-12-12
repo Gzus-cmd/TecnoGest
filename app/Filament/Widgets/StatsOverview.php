@@ -19,18 +19,22 @@ class StatsOverview extends BaseWidget
     protected function getStats(): array
     {
         // Computadoras
-        $totalComputers = Computer::count();
         $activeComputers = Computer::where('status', 'Activo')->count();
         $inactiveComputers = Computer::where('status', 'Inactivo')->count();
         $maintenanceComputers = Computer::where('status', 'En Mantenimiento')->count();
+        $totalComputers = $activeComputers + $inactiveComputers + $maintenanceComputers;
 
         // Impresoras
-        $totalPrinters = Printer::count();
         $activePrinters = Printer::where('status', 'Activo')->count();
+        $inactivePrinters = Printer::where('status', 'Inactivo')->count();
+        $maintenancePrinters = Printer::where('status', 'En Mantenimiento')->count();
+        $totalPrinters = $activePrinters + $inactivePrinters + $maintenancePrinters;
 
         // Proyectores
-        $totalProjectors = Projector::count();
         $activeProjectors = Projector::where('status', 'Activo')->count();
+        $inactiveProjectors = Projector::where('status', 'Inactivo')->count();
+        $maintenanceProjectors = Projector::where('status', 'En Mantenimiento')->count();
+        $totalProjectors = $activeProjectors + $inactiveProjectors + $maintenanceProjectors;
 
         // Componentes
         $totalComponents = Component::count();
@@ -49,27 +53,28 @@ class StatsOverview extends BaseWidget
         $activePercentage = $totalDevices > 0 ? round(($activeDevices / $totalDevices) * 100, 1) : 0;
 
         return [
+            
+            Stat::make('Computadoras', $totalComputers)
+            ->description("{$activeComputers} activas | {$inactiveComputers} inactivas | {$maintenanceComputers} en mantenimiento")
+            ->descriptionIcon('heroicon-m-cpu-chip')
+            ->color($activeComputers > $inactiveComputers ? 'success' : 'warning'),
+            
+            Stat::make('Impresoras', $totalPrinters)
+            ->description("{$activePrinters} activas | {$inactivePrinters} inactivas | {$maintenancePrinters} en mantenimiento")
+            ->descriptionIcon('heroicon-m-printer')
+            ->color($activePrinters > 0 ? 'success' : 'gray'),
+            
+            Stat::make('Proyectores', $totalProjectors)
+            ->description("{$activeProjectors} activos | {$inactiveProjectors} inactivos | {$maintenanceProjectors} en mantenimiento")
+            ->descriptionIcon('heroicon-m-play')
+            ->color($activeProjectors > 0 ? 'success' : 'gray'),
+            
             Stat::make('Total de Dispositivos', $totalDevices)
                 ->description("{$activeDevices} activos ({$activePercentage}%)")
                 ->descriptionIcon('heroicon-m-computer-desktop')
                 ->color('primary')
                 ->chart([7, 12, 15, 18, 20, 22, $totalDevices]),
-            
-            Stat::make('Computadoras', $totalComputers)
-                ->description("{$activeComputers} activas | {$inactiveComputers} inactivas | {$maintenanceComputers} en mantenimiento")
-                ->descriptionIcon('heroicon-m-cpu-chip')
-                ->color($activeComputers > $inactiveComputers ? 'success' : 'warning'),
-            
-            Stat::make('Impresoras', $totalPrinters)
-                ->description("{$activePrinters} activas")
-                ->descriptionIcon('heroicon-m-printer')
-                ->color($activePrinters > 0 ? 'success' : 'gray'),
-            
-            Stat::make('Proyectores', $totalProjectors)
-                ->description("{$activeProjectors} activos")
-                ->descriptionIcon('heroicon-m-play')
-                ->color($activeProjectors > 0 ? 'success' : 'gray'),
-            
+                
             Stat::make('Componentes', $totalComponents)
                 ->description("{$operativeComponents} operativos | {$deficientComponents} deficientes")
                 ->descriptionIcon('heroicon-m-puzzle-piece')

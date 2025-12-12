@@ -17,6 +17,7 @@ use UnitEnum;
 
 class ComponentResource extends Resource
 {
+
     protected static ?string $model = Component::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::PuzzlePiece;

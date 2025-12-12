@@ -14,10 +14,12 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class ProjectorResource extends Resource
 {
+
     protected static ?string $model = Projector::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedVideoCamera;
@@ -28,9 +30,31 @@ class ProjectorResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Proyectores';
 
+    protected static ?string $recordTitleAttribute = 'serial';
+
+    protected static int $globalSearchResultsLimit = 5;
+
     protected static string | UnitEnum | null $navigationGroup = 'Dispositivos';
 
     protected static ?int $navigationSort = 3;
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['serial'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return "Proyector: {$record->serial}";
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Ubicación' => $record->location->name ?? 'Sin ubicación',
+            'Estado' => $record->status,
+        ];
+    }
 
     public static function form(Schema $schema): Schema
     {

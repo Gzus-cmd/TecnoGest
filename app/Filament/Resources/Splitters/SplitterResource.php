@@ -17,6 +17,7 @@ use UnitEnum;
 
 class SplitterResource extends Resource
 {
+
     protected static ?string $model = Splitter::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedViewfinderCircle;

@@ -17,6 +17,7 @@ use UnitEnum;
 
 class GPUResource extends Resource
 {
+
     protected static ?string $model = GPU::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::CpuChip;

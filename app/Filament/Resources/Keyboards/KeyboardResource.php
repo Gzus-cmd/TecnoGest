@@ -17,6 +17,7 @@ use UnitEnum;
 
 class KeyboardResource extends Resource
 {
+
     protected static ?string $model = Keyboard::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBackspace;

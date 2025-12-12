@@ -17,6 +17,7 @@ use UnitEnum;
 
 class TransferResource extends Resource
 {
+
     protected static ?string $model = Transfer::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;

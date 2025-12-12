@@ -17,6 +17,7 @@ use UnitEnum;
 
 class UserResource extends Resource
 {
+
     protected static ?string $model = User::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
@@ -56,5 +57,10 @@ class UserResource extends Resource
             'create' => CreateUser::route('/create'),
             'edit' => EditUser::route('/{record}/edit'),
         ];
+    }
+
+    public static function canViewAny(): bool
+    {
+        return \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin';
     }
 }

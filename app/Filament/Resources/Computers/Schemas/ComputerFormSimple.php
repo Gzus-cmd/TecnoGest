@@ -74,6 +74,36 @@ class ComputerFormSimple
                                     ->required(),
                             ]),
                     ]),
+
+                Section::make('Asignación de Periféricos')
+                    ->description('Asigne un conjunto de periféricos (opcional)')
+                    ->schema([
+                        Select::make('peripheral_id')
+                            ->label('Conjunto de Periféricos')
+                            ->options(function ($record) {
+                                $query = \App\Models\Peripheral::query();
+                                
+                                // Si estamos editando, incluir el periférico actual O disponibles
+                                if ($record && $record->peripheral_id) {
+                                    $query->where(function ($q) use ($record) {
+                                        $q->whereNull('computer_id')
+                                          ->orWhere('id', $record->peripheral_id);
+                                    });
+                                } else {
+                                    // Si estamos creando, solo disponibles
+                                    $query->whereNull('computer_id');
+                                }
+                                
+                                return $query->with('location')->get()->mapWithKeys(function ($peripheral) use ($record) {
+                                    $location = $peripheral->location ? " - {$peripheral->location->name}" : '';
+                                    return [$peripheral->id => "{$peripheral->code}{$location}"];
+                                });
+                            })
+                            ->searchable()
+                            ->nullable()
+                            ->placeholder('Sin asignar')
+                            ->helperText('Seleccione un conjunto de periféricos disponible'),
+                    ]),
             ]);
     }
 }

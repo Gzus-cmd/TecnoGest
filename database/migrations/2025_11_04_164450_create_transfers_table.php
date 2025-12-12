@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('origin_id')->constrained('locations');
             $table->foreignId('destiny_id')->constrained('locations');
             $table->date('date');
-            $table->text('reason');
+            $table->text('reason')->nullable();
             $table->string('status')->default('Pendiente');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();

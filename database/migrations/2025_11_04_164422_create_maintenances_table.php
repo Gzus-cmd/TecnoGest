@@ -17,10 +17,12 @@ return new class extends Migration
             $table->morphs('deviceable');
             $table->foreignId('registered_by')->constrained('users');
             $table->enum('status', ['Pendiente', 'En Proceso', 'Finalizado']);
-            $table->text('description');
+            $table->text('description')->nullable();
             $table->boolean('requires_workshop')->default(false);
+            $table->foreignId('workshop_location_id')->nullable()->constrained('locations')->onDelete('set null');
             $table->string('device_previous_status')->nullable();
             $table->unsignedBigInteger('workshop_transfer_id')->nullable();
+            $table->foreignId('previous_peripheral_id')->nullable()->constrained('peripherals')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
         });
