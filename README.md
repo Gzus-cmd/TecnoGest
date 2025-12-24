@@ -36,6 +36,7 @@
 <td width="50%">
 
 ### 🖥️ Gestión de Dispositivos
+
 - Computadoras con componentes
 - Impresoras y modelos
 - Proyectores
@@ -45,6 +46,7 @@
 <td width="50%">
 
 ### 📦 Inventario
+
 - CPUs, GPUs, RAM, ROM
 - Placas base y periféricos
 - Repuestos (cabezales, lámparas)
@@ -56,6 +58,7 @@
 <td width="50%">
 
 ### 🔧 Mantenimiento
+
 - Preventivo y correctivo
 - Registro de técnicos
 - Control de taller
@@ -65,6 +68,7 @@
 <td width="50%">
 
 ### 📊 Reportes y Más
+
 - Exportación a Excel
 - Transferencias entre ubicaciones
 - Gestión de proveedores
@@ -114,17 +118,19 @@ docker run --rm \
 ./vendor/bin/sail npm run build
 ```
 
-### 🎉 ¡Listo!
+### 🎉 ¡Listo
 
-Abre tu navegador en: **http://localhost**
+Abre tu navegador en: **<http://localhost>**
 
 **Credenciales de acceso:**
+
 ```
 Email:    admin@tecnogest.com
 Password: password
 ```
 
 ### ⚡ Crear Alias (Opcional pero Recomendado)
+
 ```bash
 # Linux/Mac
 echo "alias sail='./vendor/bin/sail'" >> ~/.bashrc
@@ -169,6 +175,7 @@ docker run --rm \
 ```
 
 💡 **Tip: Crear alias para comandos más cortos**
+
 ```bash
 # Linux/Mac
 echo "alias sail='./vendor/bin/sail'" >> ~/.bashrc
@@ -189,6 +196,7 @@ source ~/.bashrc
 ```
 
 **Datos de prueba incluidos:**
+
 - ✅ 3 Usuarios (admin, soporte, viewer)
 - ✅ 10 Computadoras (5 activas, 5 en mantenimiento)
 - ✅ 8 Impresoras distribuidas
@@ -204,7 +212,7 @@ source ~/.bashrc
 ./vendor/bin/sail npm run build
 ```
 
-### 🎉 ¡Listo! Accede en http://localhost
+### 🎉 ¡Listo! Accede en <http://localhost>
 
 </details>
 
@@ -212,12 +220,17 @@ source ~/.bashrc
 <summary><b>🐳 Opción 2: Docker Producción (Imagen Standalone)</b></summary>
 
 ### Prerrequisitos
+
 - Docker Engine 20.10+
 - Docker Compose 2.0+
 
-### Paso 1: Configurar Variables
+### Paso 1: Clonar y Configurar Variables
 
 ```bash
+# Clonar el proyecto
+git clone https://github.com/Gzus-cmd/TecnoGest.git
+cd TecnoGest
+
 # Copiar archivo de producción
 cp .env.production .env
 
@@ -226,13 +239,14 @@ nano .env
 ```
 
 **Variables importantes a configurar:**
+
 ```bash
-APP_KEY=              # Generar con: php artisan key:generate
+APP_ENV=production
+APP_DEBUG=false
 APP_URL=http://tu-dominio.com
 DB_DATABASE=tecnogest
-DB_USERNAME=tecnogest_user
-DB_PASSWORD=TU_PASSWORD_SEGURO
-DB_ROOT_PASSWORD=TU_ROOT_PASSWORD_SEGURO
+DB_USERNAME=sail
+DB_PASSWORD=password    # Cambiar en producción real
 ```
 
 ### Paso 2: Construir Imagen
@@ -242,32 +256,58 @@ DB_ROOT_PASSWORD=TU_ROOT_PASSWORD_SEGURO
 docker build -f Dockerfile.production -t tecnogest:latest .
 ```
 
-### Paso 3: Iniciar con Docker Compose
+### Paso 3: Iniciar Contenedores
 
 ```bash
-# Primera vez (con migraciones y seeders)
-RUN_MIGRATIONS=true RUN_SEEDERS=true \
+# Iniciar MySQL y la aplicación
 docker-compose -f docker-compose.production.yml up -d
 
-# Siguientes veces
-docker-compose -f docker-compose.production.yml up -d
+# Esperar a que MySQL esté listo (20-30 segundos)
+sleep 30
 ```
 
-### Paso 4: Verificar
+### Paso 4: Configuración Inicial
+
+```bash
+# Generar clave de aplicación (¡IMPORTANTE!)
+docker exec tecnogest-app php artisan key:generate --force
+
+# Arreglar permisos de storage
+docker exec tecnogest-app chmod -R 775 storage bootstrap/cache
+docker exec tecnogest-app chown -R www-data:www-data storage bootstrap/cache
+
+# Ejecutar migraciones
+docker exec tecnogest-app php artisan migrate --force
+
+# (Opcional) Cargar datos de producción
+docker exec tecnogest-app php artisan db:seed --class=ProductionSeeder --force
+
+# Limpiar cachés
+docker exec tecnogest-app php artisan optimize:clear
+```
+
+### Paso 5: Verificar
 
 ```bash
 # Ver logs
 docker-compose -f docker-compose.production.yml logs -f app
 
-# Health check
-curl http://localhost/health
+# Verificar que responde
+curl -I http://localhost/admin/login
 
-# Acceder: http://localhost
+# Acceder: http://localhost/admin/login
 ```
 
-### 🎉 ¡Sistema en producción!
+### 🎉 ¡Sistema en producción
 
-**Ver [DOCKER.md](DOCKER.md) para guía completa de Docker.**
+**Credenciales de acceso:**
+
+```
+Email:    admin@tecnogest.com
+Password: password
+```
+
+> **Nota:** En producción real, cambia las contraseñas de la base de datos y del usuario admin.
 
 </details>
 
@@ -409,7 +449,7 @@ php artisan serve
 
 ### Acceso Inicial
 
-1. Abre tu navegador en **http://localhost**
+1. Abre tu navegador en **<http://localhost>**
 2. Ingresa con las credenciales:
    - Email: `admin@tecnogest.com`
    - Password: `password`
@@ -420,6 +460,7 @@ php artisan serve
 <tr><td width="50%">
 
 **📦 Gestionar Inventario**
+
 - Ve a "Dispositivos" → "Computadoras"
 - Agrega, edita o elimina equipos
 - Asigna componentes a dispositivos
@@ -428,6 +469,7 @@ php artisan serve
 </td><td width="50%">
 
 **🔧 Registrar Mantenimientos**
+
 - Ve a "Operaciones" → "Mantenimientos"
 - Crea nuevos registros
 - Selecciona tipo (Preventivo/Correctivo)
@@ -437,6 +479,7 @@ php artisan serve
 <tr><td width="50%">
 
 **📍 Transferir Equipos**
+
 - Ve a "Operaciones" → "Transferencias"
 - Selecciona dispositivo y destino
 - Registra responsable y observaciones
@@ -445,6 +488,7 @@ php artisan serve
 </td><td width="50%">
 
 **📊 Exportar Reportes**
+
 - Abre cualquier tabla de dispositivos
 - Haz clic en "Exportar"
 - Descarga en formato Excel
@@ -790,6 +834,7 @@ TecnoGest/
 **Causa:** Apache u otro servicio está usando el puerto 80.
 
 **Solución:**
+
 ```bash
 # Detener Apache
 sudo systemctl stop apache2
@@ -807,6 +852,7 @@ sudo systemctl disable apache2
 **Causa:** Falta la extensión `mbstring` de PHP.
 
 **Solución:**
+
 ```bash
 # Instalar extensión
 sudo apt install -y php8.4-mbstring
@@ -827,6 +873,7 @@ composer install
 **Síntoma:** Errores al guardar archivos o logs.
 
 **Solución con Docker:**
+
 ```bash
 ./vendor/bin/sail artisan storage:link
 ./vendor/bin/sail shell
@@ -834,6 +881,7 @@ chmod -R 775 storage bootstrap/cache
 ```
 
 **Solución sin Docker:**
+
 ```bash
 sudo chown -R $USER:www-data storage bootstrap/cache
 chmod -R 775 storage bootstrap/cache
@@ -845,6 +893,7 @@ chmod -R 775 storage bootstrap/cache
 <summary><b>❌ Docker/Sail no inicia</b></summary>
 
 **Solución:**
+
 ```bash
 # 1. Verificar Docker
 sudo systemctl status docker
@@ -866,6 +915,7 @@ sudo systemctl restart docker
 **Verifica tu `.env`:**
 
 Con Docker (Sail):
+
 ```env
 DB_HOST=mysql
 DB_PORT=3306
@@ -875,6 +925,7 @@ DB_PASSWORD=password
 ```
 
 Sin Docker (local):
+
 ```env
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -889,6 +940,7 @@ DB_PASSWORD=tu_password
 <summary><b>❌ Página en blanco o error 500</b></summary>
 
 **Solución:**
+
 ```bash
 # Limpiar todas las cachés
 ./vendor/bin/sail artisan optimize:clear
