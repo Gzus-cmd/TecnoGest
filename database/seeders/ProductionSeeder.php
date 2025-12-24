@@ -100,7 +100,7 @@ class ProductionSeeder extends Seeder
             ['name' => 'Taller de Informática'],
             [
                 'pavilion' => 'Principal',
-                'apartment' => 'Área de Soporte',
+                'apartment' => 1,
                 'is_workshop' => true,
             ]
         );
