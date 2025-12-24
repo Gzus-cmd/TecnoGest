@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════
-# TecnoGest - Dockerfile para Render
+# TecnoGest - Dockerfile para Railway
 # ═══════════════════════════════════════════════════════════════
 
 # ───────────────────────────────────────────────────────────────
@@ -9,12 +9,13 @@ FROM node:20-alpine AS node-builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
+COPY package.json package-lock.json* ./
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 COPY vite.config.js ./
 COPY resources ./resources
 COPY public ./public
+COPY tailwind.config.js* postcss.config.js* ./
 
 RUN npm run build
 
@@ -42,12 +43,13 @@ FROM php:8.4-fpm-alpine
 
 WORKDIR /var/www/html
 
-# Variables de entorno
+# Variables de entorno para Railway
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
     PHP_OPCACHE_VALIDATE_TIMESTAMPS="0" \
     PHP_OPCACHE_MAX_ACCELERATED_FILES="10000" \
     PHP_OPCACHE_MEMORY_CONSUMPTION="192" \
-    PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
+    PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10" \
+    PORT=8080
 
 # Instalar dependencias del sistema
 RUN apk add --no-cache \
@@ -61,6 +63,7 @@ RUN apk add --no-cache \
     icu-libs \
     libintl \
     libpq \
+    curl \
     && apk add --no-cache --virtual .build-deps \
     freetype-dev \
     libjpeg-turbo-dev \
@@ -82,7 +85,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     mbstring \
     bcmath \
     intl \
-    opcache
+    opcache \
+    pcntl
 
 # Limpiar dependencias de compilación
 RUN apk del .build-deps \
@@ -104,15 +108,19 @@ COPY --chown=www-data:www-data . .
 # Copiar assets compilados
 COPY --from=node-builder /app/public/build ./public/build
 
+# Generar autoload optimizado
+RUN composer dump-autoload --optimize --no-dev
+
 # Crear directorios y permisos
 RUN mkdir -p \
-    storage/framework/cache \
+    storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \
     storage/logs \
     bootstrap/cache \
     /var/log/nginx \
     /var/log/supervisor \
+    /run/nginx \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
@@ -120,7 +128,11 @@ RUN mkdir -p \
 COPY docker/start.sh /usr/local/bin/start
 RUN chmod +x /usr/local/bin/start
 
-# Puerto (Render usa variable PORT)
-EXPOSE 8080
+# Health check para Railway
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
+
+# Puerto dinámico (Railway asigna PORT automáticamente)
+EXPOSE ${PORT:-8080}
 
 CMD ["/usr/local/bin/start"]
