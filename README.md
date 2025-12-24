@@ -702,14 +702,138 @@ php artisan serve  # http://localhost:8000
 
 ## 🚀 Despliegue en Producción
 
+### 📥 Imagen Docker Pre-construida (Recomendado)
+
+> **Descarga rápida:** Imagen lista para desplegar sin necesidad de compilar.
+
+<div align="center">
+
+[![Download Docker Image](https://img.shields.io/badge/📦_Descargar_Imagen_Docker-v1.0.0_(492MB)-blue?style=for-the-badge)](https://drive.google.com/file/d/TU_ID_DE_ARCHIVO/view?usp=sharing)
+
+</div>
+
+**Archivos necesarios:**
+| Archivo | Descripción |
+|---------|-------------|
+| `tecnogest-v1.0.0.tar.gz` | Imagen Docker (descargar de Drive) |
+| `docker-compose.production.yml` | Ya incluido en el repositorio |
+| `.env.production` | Ya incluido en el repositorio |
+
 <details>
-<summary><b>☁️ Servidor VPS con Nginx</b></summary>
+<summary><b>🐳 Despliegue con Imagen Pre-construida</b></summary>
+
+### Paso 1: Preparar Servidor
+
+```bash
+# Instalar Docker (Ubuntu/Debian)
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+
+# Reiniciar sesión y verificar
+docker --version
+```
+
+### Paso 2: Descargar y Cargar Imagen
+
+```bash
+# Crear directorio
+mkdir -p /opt/tecnogest && cd /opt/tecnogest
+
+# Descargar imagen desde Google Drive (usar el link de arriba)
+# O transferir con scp desde tu máquina local:
+# scp tecnogest-v1.0.0.tar.gz usuario@servidor:/opt/tecnogest/
+
+# Cargar imagen en Docker
+docker load < tecnogest-v1.0.0.tar.gz
+
+# Verificar
+docker images | grep tecnogest
+```
+
+### Paso 3: Configurar Proyecto
+
+```bash
+# Clonar solo los archivos de configuración
+git clone --depth 1 https://github.com/Gzus-cmd/TecnoGest.git .
+
+# Configurar variables de entorno
+cp .env.production .env
+nano .env  # Editar credenciales
+```
+
+**Variables importantes en `.env`:**
+```env
+APP_URL=http://tu-dominio.com
+DB_PASSWORD=TU_PASSWORD_SEGURO
+MYSQL_ROOT_PASSWORD=TU_ROOT_PASSWORD
+```
+
+### Paso 4: Iniciar Servicios
+
+```bash
+# Iniciar contenedores
+docker-compose -f docker-compose.production.yml up -d
+
+# Esperar a MySQL (30 seg)
+sleep 30
+
+# Configuración inicial
+docker exec tecnogest-app php artisan key:generate --force
+docker exec tecnogest-app chmod -R 775 storage bootstrap/cache
+docker exec tecnogest-app chown -R www-data:www-data storage bootstrap/cache
+docker exec tecnogest-app php artisan migrate --force
+docker exec tecnogest-app php artisan db:seed --class=ProductionSeeder --force
+```
+
+### Paso 5: Verificar
+
+```bash
+curl -I http://localhost/admin/login
+# Debe mostrar: HTTP/1.1 200 OK
+```
+
+**Acceso:** http://tu-servidor/admin/login
+- Email: `admin@tecnogest.com`
+- Password: `password`
+
+</details>
+
+<details>
+<summary><b>🔨 Construir tu Propia Imagen</b></summary>
+
+Si prefieres construir la imagen desde el código fuente:
+
+```bash
+# Clonar repositorio
+git clone https://github.com/Gzus-cmd/TecnoGest.git
+cd TecnoGest
+
+# Construir imagen
+docker build -f Dockerfile.production -t tecnogest:latest .
+
+# Configurar e iniciar
+cp .env.production .env
+nano .env  # Editar credenciales
+
+docker-compose -f docker-compose.production.yml up -d
+
+# Configuración inicial (igual que arriba)
+docker exec tecnogest-app php artisan key:generate --force
+docker exec tecnogest-app chmod -R 775 storage bootstrap/cache
+docker exec tecnogest-app chown -R www-data:www-data storage bootstrap/cache
+docker exec tecnogest-app php artisan migrate --force
+```
+
+</details>
+
+<details>
+<summary><b>☁️ Servidor VPS con Nginx (Sin Docker)</b></summary>
 
 ### Preparar Servidor
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y nginx mysql-server redis-server
+sudo apt install -y nginx mysql-server php8.4-fpm php8.4-mysql php8.4-mbstring php8.4-xml php8.4-curl php8.4-zip php8.4-gd php8.4-intl
 ```
 
 ### Instalar Proyecto
@@ -721,16 +845,14 @@ cd TecnoGest
 
 composer install --optimize-autoloader --no-dev
 cp .env.example .env
-nano .env  # Configurar para producción
+nano .env  # Configurar BD y APP_URL
 
 php artisan key:generate
-php artisan migrate --force
+php artisan migrate --force --seed
 npm install && npm run build
 
 # Optimizaciones
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+php artisan optimize
 
 # Permisos
 sudo chown -R www-data:www-data storage bootstrap/cache
@@ -748,61 +870,62 @@ sudo certbot --nginx -d tudominio.com
 </details>
 
 <details>
-<summary><b>🔐 Checklist de Seguridad</b></summary>
+<summary><b>🔐 Seguridad en Producción</b></summary>
 
 ```bash
-# 1. Cambiar credenciales por defecto
-php artisan tinker
+# 1. Cambiar contraseña del admin
+docker exec -it tecnogest-app php artisan tinker
 >>> User::where('email', 'admin@tecnogest.com')->first()->update(['password' => Hash::make('NuevaPasswordSegura')]);
 
-# 2. Configurar .env
+# 2. Verificar configuración .env
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://tudominio.com
 
-# 3. Implementar HTTPS
+# 3. Configurar SSL/HTTPS con reverse proxy
+sudo apt install nginx certbot python3-certbot-nginx
 sudo certbot --nginx -d tudominio.com
 ```
 
 </details>
 
-### Opción 2: Docker en Producción
+<details>
+<summary><b>💾 Backup y Mantenimiento</b></summary>
 
+### Crear Backup
 ```bash
-# 1. Clonar repositorio y configurar
-git clone https://github.com/Gzus-cmd/TecnoGest.git
-cd TecnoGest
-cp .env.example .env
+# Base de datos
+docker exec tecnogest-mysql mysqldump -u root -p tecnogest > backup_$(date +%Y%m%d).sql
 
-# 2. Editar .env con credenciales de producción
-
-# 3. Construir e iniciar contenedores
-docker-compose up -d
-
-# 4. Ejecutar migraciones
-docker-compose exec app php artisan migrate --force
-
-# 5. Optimizar
-docker-compose exec app php artisan optimize
+# Archivos subidos
+docker cp tecnogest-app:/var/www/html/storage/app ./backup_storage
 ```
 
-## �� Seguridad en Producción
-
+### Restaurar Backup
 ```bash
-# 1. Cambiar credenciales por defecto
-./vendor/bin/sail artisan tinker
->>> $user = User::where('email', 'admin@tecnogest.com')->first();
->>> $user->password = Hash::make('nueva_contraseña_segura');
->>> $user->save();
-
-# 2. Desactivar debug mode en .env
-APP_DEBUG=false
-APP_ENV=production
-
-# 3. Implementar HTTPS
-sudo certbot --nginx -d tudominio.com
+docker exec -i tecnogest-mysql mysql -u root -p tecnogest < backup.sql
 ```
 
+### Actualizar Aplicación
+```bash
+# 1. Backup
+docker exec tecnogest-mysql mysqldump -u root -p tecnogest > backup_pre_update.sql
+
+# 2. Cargar nueva imagen
+docker load < tecnogest-vX.X.X.tar.gz
+
+# 3. Reiniciar
+docker-compose -f docker-compose.production.yml down
+docker-compose -f docker-compose.production.yml up -d
+
+# 4. Migraciones
+docker exec tecnogest-app php artisan migrate --force
+docker exec tecnogest-app php artisan optimize:clear
+```
+
+</details>
+
+---
 ## 📊 Estructura del Proyecto
 
 ```
