@@ -108,6 +108,9 @@ COPY --chown=www-data:www-data . .
 # Copiar assets compilados
 COPY --from=node-builder /app/public/build ./public/build
 
+# Crear archivo .env para producción (las variables vienen del entorno)
+RUN cp .env.example .env || touch .env
+
 # Crear directorios y permisos
 RUN mkdir -p \
     storage/framework/cache/data \

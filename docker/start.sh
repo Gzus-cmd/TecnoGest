@@ -12,6 +12,12 @@ echo "🔌 Port: ${PORT:-8080}"
 # Crear directorios necesarios
 mkdir -p /var/log/php /var/log/supervisor /var/log/nginx /run/nginx
 
+# Asegurar que existe .env (Railway usa variables de entorno)
+if [ ! -f ".env" ]; then
+    echo "📄 Creating .env file..."
+    touch .env
+fi
+
 # Configurar puerto dinámico de Railway en nginx
 if [ -n "$PORT" ]; then
     echo "🔧 Configuring nginx for port $PORT..."
@@ -19,10 +25,10 @@ if [ -n "$PORT" ]; then
     sed -i "s/listen \[::\]:8080/listen [::]:$PORT/g" /etc/nginx/http.d/default.conf
 fi
 
-# Generar APP_KEY si no existe
+# Verificar APP_KEY (debe estar configurada en Railway)
 if [ -z "$APP_KEY" ]; then
-    echo "🔑 Generating application key..."
-    php artisan key:generate --force
+    echo "⚠️  WARNING: APP_KEY not set! Please configure it in Railway variables."
+    echo "   Generate one with: php artisan key:generate --show"
 fi
 
 # Crear enlace simbólico de storage si no existe
