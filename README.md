@@ -4,6 +4,7 @@
 
 ### Sistema de Gestión de Inventario Tecnológico
 
+[![Version](https://img.shields.io/badge/Versión-1.0.0-success?style=for-the-badge)](https://github.com/Gzus-cmd/TecnoGest/releases)
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![Filament](https://img.shields.io/badge/Filament-4.x-FFAA00?style=for-the-badge&logo=filament&logoColor=white)](https://filamentphp.com)
 [![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
@@ -708,7 +709,7 @@ php artisan serve  # http://localhost:8000
 
 <div align="center">
 
-[![Download Docker Image](https://img.shields.io/badge/📦_Descargar_Imagen_Docker-v1.0.0_(492MB)-blue?style=for-the-badge)](https://drive.google.com/file/d/TU_ID_DE_ARCHIVO/view?usp=sharing)
+[![Download Docker Image](https://img.shields.io/badge/📦_Descargar_Imagen_Docker-v1.0.0_(492MB)-blue?style=for-the-badge)](https://drive.google.com/file/d/1ffi777wpWWmYF7u-gP_kb8gWuQjcLIwa/view?usp=sharing)
 
 </div>
 
