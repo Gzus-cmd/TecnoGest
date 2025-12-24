@@ -1,9 +1,5 @@
 # ═══════════════════════════════════════════════════════════════
-# Dockerfile para TecnoGest - Imagen de Producción
-# ═══════════════════════════════════════════════════════════════
-# Uso:
-#   docker build -f Dockerfile.production -t tecnogest:latest .
-#   docker run -p 80:8080 tecnogest:latest
+# TecnoGest - Dockerfile para Render
 # ═══════════════════════════════════════════════════════════════
 
 # ───────────────────────────────────────────────────────────────
@@ -13,18 +9,13 @@ FROM node:20-alpine AS node-builder
 
 WORKDIR /app
 
-# Copiar archivos de dependencias
 COPY package.json package-lock.json ./
-
-# Instalar dependencias con legacy peer deps
 RUN npm ci --legacy-peer-deps
 
-# Copiar código fuente necesario
 COPY vite.config.js ./
 COPY resources ./resources
 COPY public ./public
 
-# Compilar assets
 RUN npm run build
 
 # ───────────────────────────────────────────────────────────────
@@ -34,10 +25,8 @@ FROM composer:2.8 AS composer-builder
 
 WORKDIR /app
 
-# Copiar archivos de dependencias
 COPY composer.json composer.lock ./
 
-# Instalar dependencias de producción (ignorar platform reqs en build)
 RUN composer install \
     --no-dev \
     --no-scripts \
@@ -47,14 +36,11 @@ RUN composer install \
     --ignore-platform-reqs
 
 # ───────────────────────────────────────────────────────────────
-# STAGE 3: Imagen Final de Producción
+# STAGE 3: Imagen Final
 # ───────────────────────────────────────────────────────────────
 FROM php:8.4-fpm-alpine
 
-# Información de la imagen
-LABEL maintainer="TecnoGest <soporte@tecnogest.com>"
-LABEL description="Sistema de Gestión de Inventario Tecnológico"
-LABEL version="1.0.0"
+WORKDIR /var/www/html
 
 # Variables de entorno
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
@@ -63,13 +49,10 @@ ENV COMPOSER_ALLOW_SUPERUSER=1 \
     PHP_OPCACHE_MEMORY_CONSUMPTION="192" \
     PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
 
-WORKDIR /var/www/html
-
 # Instalar dependencias del sistema
 RUN apk add --no-cache \
     nginx \
     supervisor \
-    mysql-client \
     freetype \
     libjpeg-turbo \
     libpng \
@@ -77,6 +60,7 @@ RUN apk add --no-cache \
     oniguruma \
     icu-libs \
     libintl \
+    libpq \
     && apk add --no-cache --virtual .build-deps \
     freetype-dev \
     libjpeg-turbo-dev \
@@ -85,13 +69,14 @@ RUN apk add --no-cache \
     oniguruma-dev \
     icu-dev \
     gettext-dev \
+    postgresql-dev \
     $PHPIZE_DEPS
 
-# Instalar extensiones PHP requeridas
+# Instalar extensiones PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
     pdo_mysql \
-    mysqli \
+    pdo_pgsql \
     zip \
     gd \
     mbstring \
@@ -103,52 +88,39 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 RUN apk del .build-deps \
     && rm -rf /tmp/* /var/cache/apk/*
 
-# Copiar configuración de PHP
+# Copiar configuraciones
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-app.ini
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
-
-# Copiar configuración de Nginx
 COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
-
-# Copiar configuración de Supervisor
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Copiar dependencias de Composer desde builder
+# Copiar dependencias de Composer
 COPY --from=composer-builder /app/vendor ./vendor
 
 # Copiar código fuente
 COPY --chown=www-data:www-data . .
 
-# Copiar assets compilados desde node-builder
+# Copiar assets compilados
 COPY --from=node-builder /app/public/build ./public/build
 
-# Crear directorios necesarios y ajustar permisos
+# Crear directorios y permisos
 RUN mkdir -p \
     storage/framework/cache \
     storage/framework/sessions \
     storage/framework/views \
     storage/logs \
     bootstrap/cache \
+    /var/log/nginx \
+    /var/log/supervisor \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
-
-# Optimizar Laravel para producción
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache \
-    && php artisan filament:optimize
-
-# Exponer puerto
-EXPOSE 8080
 
 # Script de inicio
 COPY docker/start.sh /usr/local/bin/start
 RUN chmod +x /usr/local/bin/start
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+# Puerto (Render usa variable PORT)
+EXPOSE 8080
 
-# Iniciar supervisor (gestiona nginx + php-fpm)
 CMD ["/usr/local/bin/start"]

@@ -1,48 +1,34 @@
 #!/bin/sh
 # ═══════════════════════════════════════════════════════════════
-# TecnoGest - Docker Container Startup Script
+# TecnoGest - Docker Container Startup Script (Render)
 # ═══════════════════════════════════════════════════════════════
 
 set -e
 
 echo "🚀 Starting TecnoGest..."
 
-# Crear directorios de logs si no existen
-mkdir -p /var/log/php /var/log/supervisor
+# Crear directorios necesarios
+mkdir -p /var/log/php /var/log/supervisor /var/log/nginx
 
-# Esperar a que la base de datos esté lista (si existe)
-if [ ! -z "$DB_HOST" ]; then
-    echo "⏳ Waiting for database at $DB_HOST:$DB_PORT..."
-    timeout=30
-    while ! nc -z $DB_HOST $DB_PORT; do
-        timeout=$((timeout - 1))
-        if [ $timeout -le 0 ]; then
-            echo "❌ Database connection timeout"
-            exit 1
-        fi
-        sleep 1
-    done
-    echo "✅ Database is ready"
-fi
-
-# Ejecutar migraciones si es primera vez
-if [ "$RUN_MIGRATIONS" = "true" ]; then
+# Ejecutar migraciones automáticamente en producción
+if [ "$APP_ENV" = "production" ]; then
     echo "📊 Running database migrations..."
-    php artisan migrate --force
+    php artisan migrate --force || echo "⚠️ Migrations skipped or already up to date"
 fi
 
 # Ejecutar seeders si es necesario
 if [ "$RUN_SEEDERS" = "true" ]; then
     echo "🌱 Running database seeders..."
-    php artisan db:seed --class=ProductionSeeder --force
+    php artisan db:seed --class=ProductionSeeder --force || echo "⚠️ Seeders skipped"
 fi
 
 # Limpiar y cachear configuración
 echo "⚡ Optimizing application..."
-php artisan optimize
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
 echo "✅ TecnoGest started successfully!"
-echo "🌐 Access the application at http://localhost:8080"
 
 # Iniciar Supervisor (gestiona nginx + php-fpm)
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
