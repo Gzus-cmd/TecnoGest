@@ -108,9 +108,6 @@ COPY --chown=www-data:www-data . .
 # Copiar assets compilados
 COPY --from=node-builder /app/public/build ./public/build
 
-# Generar autoload optimizado
-RUN composer dump-autoload --optimize --no-dev
-
 # Crear directorios y permisos
 RUN mkdir -p \
     storage/framework/cache/data \
