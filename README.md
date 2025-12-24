@@ -714,6 +714,7 @@ php artisan serve  # http://localhost:8000
 </div>
 
 **Archivos necesarios:**
+
 | Archivo | Descripción |
 |---------|-------------|
 | `tecnogest-v1.0.0.tar.gz` | Imagen Docker (descargar de Drive) |
@@ -763,6 +764,7 @@ nano .env  # Editar credenciales
 ```
 
 **Variables importantes en `.env`:**
+
 ```env
 APP_URL=http://tu-dominio.com
 DB_PASSWORD=TU_PASSWORD_SEGURO
@@ -793,7 +795,8 @@ curl -I http://localhost/admin/login
 # Debe mostrar: HTTP/1.1 200 OK
 ```
 
-**Acceso:** http://tu-servidor/admin/login
+**Acceso:** <http://tu-servidor/admin/login>
+
 - Email: `admin@tecnogest.com`
 - Password: `password`
 
@@ -894,6 +897,7 @@ sudo certbot --nginx -d tudominio.com
 <summary><b>💾 Backup y Mantenimiento</b></summary>
 
 ### Crear Backup
+
 ```bash
 # Base de datos
 docker exec tecnogest-mysql mysqldump -u root -p tecnogest > backup_$(date +%Y%m%d).sql
@@ -903,11 +907,13 @@ docker cp tecnogest-app:/var/www/html/storage/app ./backup_storage
 ```
 
 ### Restaurar Backup
+
 ```bash
 docker exec -i tecnogest-mysql mysql -u root -p tecnogest < backup.sql
 ```
 
 ### Actualizar Aplicación
+
 ```bash
 # 1. Backup
 docker exec tecnogest-mysql mysqldump -u root -p tecnogest > backup_pre_update.sql
@@ -927,6 +933,7 @@ docker exec tecnogest-app php artisan optimize:clear
 </details>
 
 ---
+
 ## 📊 Estructura del Proyecto
 
 ```
