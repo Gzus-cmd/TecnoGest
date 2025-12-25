@@ -16,11 +16,11 @@ class StatsOverview extends BaseWidget
     use HasWidgetShield;
 
     protected static ?int $sort = 1;
-    
+
     protected int | string | array $columnSpan = 'full';
-    
+
     // Desactivado para producción - actualiza solo al recargar página
-    protected static ?string $pollingInterval = null;
+    protected ?string $pollingInterval = null;
 
     protected function getStats(): array
     {
@@ -31,27 +31,27 @@ class StatsOverview extends BaseWidget
             SUM(CASE WHEN status = 'Inactivo' THEN 1 ELSE 0 END) as inactive,
             SUM(CASE WHEN status = 'En Mantenimiento' THEN 1 ELSE 0 END) as maintenance
         ")->first();
-        
+
         $printerStats = Printer::selectRaw("
             COUNT(*) as total,
             SUM(CASE WHEN status = 'Activo' THEN 1 ELSE 0 END) as active,
             SUM(CASE WHEN status = 'Inactivo' THEN 1 ELSE 0 END) as inactive,
             SUM(CASE WHEN status = 'En Mantenimiento' THEN 1 ELSE 0 END) as maintenance
         ")->first();
-        
+
         $projectorStats = Projector::selectRaw("
             COUNT(*) as total,
             SUM(CASE WHEN status = 'Activo' THEN 1 ELSE 0 END) as active,
             SUM(CASE WHEN status = 'Inactivo' THEN 1 ELSE 0 END) as inactive,
             SUM(CASE WHEN status = 'En Mantenimiento' THEN 1 ELSE 0 END) as maintenance
         ")->first();
-        
+
         $componentStats = Component::selectRaw("
             COUNT(*) as total,
             SUM(CASE WHEN status = 'Operativo' THEN 1 ELSE 0 END) as operative,
             SUM(CASE WHEN status = 'Deficiente' THEN 1 ELSE 0 END) as deficient
         ")->first();
-        
+
         $maintenanceStats = Maintenance::selectRaw("
             SUM(CASE WHEN status = 'Pendiente' THEN 1 ELSE 0 END) as pending,
             SUM(CASE WHEN status = 'En Proceso' THEN 1 ELSE 0 END) as in_progress
@@ -88,33 +88,33 @@ class StatsOverview extends BaseWidget
         $activePercentage = $totalDevices > 0 ? round(($activeDevices / $totalDevices) * 100, 1) : 0;
 
         return [
-            
+
             Stat::make('Computadoras', $totalComputers)
-            ->description("{$activeComputers} activas | {$inactiveComputers} inactivas | {$maintenanceComputers} en mantenimiento")
-            ->descriptionIcon('heroicon-m-cpu-chip')
-            ->color($activeComputers > $inactiveComputers ? 'success' : 'warning'),
-            
+                ->description("{$activeComputers} activas | {$inactiveComputers} inactivas | {$maintenanceComputers} en mantenimiento")
+                ->descriptionIcon('heroicon-m-cpu-chip')
+                ->color($activeComputers > $inactiveComputers ? 'success' : 'warning'),
+
             Stat::make('Impresoras', $totalPrinters)
-            ->description("{$activePrinters} activas | {$inactivePrinters} inactivas | {$maintenancePrinters} en mantenimiento")
-            ->descriptionIcon('heroicon-m-printer')
-            ->color($activePrinters > 0 ? 'success' : 'gray'),
-            
+                ->description("{$activePrinters} activas | {$inactivePrinters} inactivas | {$maintenancePrinters} en mantenimiento")
+                ->descriptionIcon('heroicon-m-printer')
+                ->color($activePrinters > 0 ? 'success' : 'gray'),
+
             Stat::make('Proyectores', $totalProjectors)
-            ->description("{$activeProjectors} activos | {$inactiveProjectors} inactivos | {$maintenanceProjectors} en mantenimiento")
-            ->descriptionIcon('heroicon-m-play')
-            ->color($activeProjectors > 0 ? 'success' : 'gray'),
-            
+                ->description("{$activeProjectors} activos | {$inactiveProjectors} inactivos | {$maintenanceProjectors} en mantenimiento")
+                ->descriptionIcon('heroicon-m-play')
+                ->color($activeProjectors > 0 ? 'success' : 'gray'),
+
             Stat::make('Total de Dispositivos', $totalDevices)
                 ->description("{$activeDevices} activos ({$activePercentage}%)")
                 ->descriptionIcon('heroicon-m-computer-desktop')
                 ->color('primary')
                 ->chart([7, 12, 15, 18, 20, 22, $totalDevices]),
-                
+
             Stat::make('Componentes', $totalComponents)
                 ->description("{$operativeComponents} operativos | {$deficientComponents} deficientes")
                 ->descriptionIcon('heroicon-m-puzzle-piece')
                 ->color($deficientComponents > 5 ? 'warning' : 'success'),
-            
+
             Stat::make('Mantenimientos', $pendingMaintenances + $inProgressMaintenances)
                 ->description("{$pendingMaintenances} pendientes | {$inProgressMaintenances} en proceso")
                 ->descriptionIcon('heroicon-m-wrench-screwdriver')
