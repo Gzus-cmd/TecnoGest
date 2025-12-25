@@ -30,10 +30,10 @@ class TransferSeeder extends Seeder
             return;
         }
 
-        // Obtener dispositivos activos
-        $computers = Computer::whereIn('status', ['Activo', 'Inactivo'])->limit(4)->get();
-        $printers = Printer::whereIn('status', ['Activo', 'Inactivo'])->limit(2)->get();
-        $projectors = Projector::whereIn('status', ['Activo', 'Inactivo'])->limit(2)->get();
+        // Obtener dispositivos activos (cargando relación location para evitar lazy loading)
+        $computers = Computer::with('location')->whereIn('status', ['Activo', 'Inactivo'])->limit(4)->get();
+        $printers = Printer::with('location')->whereIn('status', ['Activo', 'Inactivo'])->limit(2)->get();
+        $projectors = Projector::with('location')->whereIn('status', ['Activo', 'Inactivo'])->limit(2)->get();
 
         $statuses = ['Pendiente', 'En Proceso', 'Finalizado'];
         $reasons = [
