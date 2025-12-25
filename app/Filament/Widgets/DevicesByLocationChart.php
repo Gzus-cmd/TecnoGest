@@ -28,10 +28,12 @@ class DevicesByLocationChart extends ChartWidget
     {
         // Optimización: Usar withCount para cargar conteos en una sola query
         $locations = Location::withCount(['computers', 'printers', 'projectors'])
-            ->having('computers_count', '>', 0)
-            ->orHaving('printers_count', '>', 0)
-            ->orHaving('projectors_count', '>', 0)
-            ->get();
+            ->get()
+            ->filter(fn($location) => 
+                $location->computers_count > 0 || 
+                $location->printers_count > 0 || 
+                $location->projectors_count > 0
+            );
         
         $locationNames = [];
         $computerCounts = [];

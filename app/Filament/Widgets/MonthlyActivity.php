@@ -32,8 +32,8 @@ class MonthlyActivity extends BaseWidget
         $deviceStats = DB::select("
             SELECT 
                 CASE 
-                    WHEN MONTH(created_at) = ? AND YEAR(created_at) = ? THEN 'current'
-                    WHEN MONTH(created_at) = ? AND YEAR(created_at) = ? THEN 'last'
+                    WHEN EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? THEN 'current'
+                    WHEN EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? THEN 'last'
                 END as period,
                 COUNT(*) as count
             FROM (
@@ -43,8 +43,8 @@ class MonthlyActivity extends BaseWidget
                 UNION ALL
                 SELECT created_at FROM projectors
             ) as all_devices
-            WHERE (MONTH(created_at) = ? AND YEAR(created_at) = ?)
-               OR (MONTH(created_at) = ? AND YEAR(created_at) = ?)
+            WHERE (EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ?)
+               OR (EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ?)
             GROUP BY period
         ", [
             $currentMonth, $currentYear, $lastMonth, $lastYear,
@@ -62,7 +62,7 @@ class MonthlyActivity extends BaseWidget
         // Mantenimientos con una sola query
         $maintenanceStats = Maintenance::selectRaw("
             COUNT(*) as total,
-            SUM(CASE WHEN status = 'Finalizado' AND MONTH(updated_at) = ? AND YEAR(updated_at) = ? THEN 1 ELSE 0 END) as completed
+            SUM(CASE WHEN status = 'Finalizado' AND EXTRACT(MONTH FROM updated_at) = ? AND EXTRACT(YEAR FROM updated_at) = ? THEN 1 ELSE 0 END) as completed
         ", [$currentMonth, $currentYear])
             ->whereMonth('created_at', $currentMonth)
             ->whereYear('created_at', $currentYear)

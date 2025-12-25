@@ -76,7 +76,7 @@ class MaintenanceTrendChart extends ChartWidget
             
             // Una sola query para obtener todos los datos
             $results = Maintenance::selectRaw(
-                'YEAR(created_at) as year, MONTH(created_at) as month, type, COUNT(*) as count'
+                'EXTRACT(YEAR FROM created_at) as year, EXTRACT(MONTH FROM created_at) as month, type, COUNT(*) as count'
             )
                 ->where('created_at', '>=', $startDate)
                 ->groupBy('year', 'month', 'type')
