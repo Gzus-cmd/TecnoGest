@@ -9,14 +9,14 @@ use Illuminate\Support\Facades\Hash;
 
 /**
  * Seeder de PRODUCCIÓN - Solo carga la configuración inicial mínima
- * 
+ *
  * Uso: php artisan db:seed --class=ProductionSeeder
- * 
+ *
  * Incluye:
  * - Usuarios administrativos básicos
  * - Roles y permisos del sistema
  * - Ubicaciones base (solo taller)
- * 
+ *
  * NO incluye datos de prueba (computadoras, componentes, etc.)
  */
 class ProductionSeeder extends Seeder
@@ -36,7 +36,7 @@ class ProductionSeeder extends Seeder
         // 1. USUARIOS ADMINISTRATIVOS
         // ═══════════════════════════════════════════════════════════════
         $this->command->info('👤 Creando usuarios administrativos...');
-        
+
         $admin = User::firstOrCreate(
             ['email' => 'admin@tecnogest.com'],
             [
@@ -74,16 +74,16 @@ class ProductionSeeder extends Seeder
         // 3. ASIGNAR ROLES A USUARIOS
         // ═══════════════════════════════════════════════════════════════
         $this->command->info('🔗 Asignando roles a usuarios...');
-        
+
         // Recargar usuarios para evitar problemas de cache
         $admin->refresh();
         $tecnico->refresh();
-        
+
         if (!$admin->hasRole('super_admin')) {
             $admin->assignRole('super_admin');
             $this->command->info("   ✓ Rol 'super_admin' asignado a admin@tecnogest.com");
         }
-        
+
         if (!$tecnico->hasRole('tecnico')) {
             $tecnico->assignRole('tecnico');
             $this->command->info("   ✓ Rol 'tecnico' asignado a tecnico@tecnogest.com");
@@ -95,7 +95,7 @@ class ProductionSeeder extends Seeder
         // 4. UBICACIÓN BASE (TALLER)
         // ═══════════════════════════════════════════════════════════════
         $this->command->info('📍 Creando ubicación de taller...');
-        
+
         \App\Models\Location::firstOrCreate(
             ['name' => 'Taller de Informática'],
             [

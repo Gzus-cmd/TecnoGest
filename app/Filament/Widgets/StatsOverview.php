@@ -19,8 +19,8 @@ class StatsOverview extends BaseWidget
     
     protected int | string | array $columnSpan = 'full';
     
-    // Actualizar cada 5 minutos
-    protected ?string $pollingInterval = '5m';
+    // Desactivado para producción - actualiza solo al recargar página
+    protected static ?string $pollingInterval = null;
 
     protected function getStats(): array
     {
