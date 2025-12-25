@@ -23,9 +23,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // ═══════════════════════════════════════════════════════════════
+        // GATE PARA SUPER ADMIN (Filament Shield)
+        // ═══════════════════════════════════════════════════════════════
+        Gate::before(function ($user, $ability) {
+            return $user->hasRole('super_admin') ? true : null;
+        });
+
+        // ═══════════════════════════════════════════════════════════════
         // OPTIMIZACIONES DE ELOQUENT
         // ═══════════════════════════════════════════════════════════════
-        
+
         // En producción: prevenir lazy loading (detectar N+1)
         // En desarrollo: solo registrar warnings
         if ($this->app->environment('production')) {
@@ -37,10 +44,10 @@ class AppServiceProvider extends ServiceProvider
                 logger()->warning("Lazy loading detectado: {$model}::{$relation}");
             });
         }
-        
+
         // Prevenir mass assignment silencioso (seguridad)
         Model::preventSilentlyDiscardingAttributes(true);
-        
+
         // Prevenir acceso a atributos inexistentes
         Model::preventAccessingMissingAttributes(true);
     }

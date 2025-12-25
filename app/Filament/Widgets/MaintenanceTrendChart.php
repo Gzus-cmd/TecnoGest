@@ -12,15 +12,15 @@ class MaintenanceTrendChart extends ChartWidget
 {
     use InteractsWithPageFilters;
     use HasWidgetShield;
-    
+
     protected ?string $heading = 'Tendencia de Mantenimientos';
-    
+
     protected static ?int $sort = 2;
-    
+
     protected int | string | array $columnSpan = 'full';
-    
+
     public ?string $filter = '6m';
-    
+
     public function getMaxHeight(): ?string
     {
         return '250px';
@@ -30,17 +30,17 @@ class MaintenanceTrendChart extends ChartWidget
     {
         $data = ['preventive' => [], 'corrective' => []];
         $labels = [];
-        
+
         // Si es 1 mes o 3 meses, mostrar por días
         if (in_array($this->filter, ['1m', '3m'])) {
-            $days = match($this->filter) {
+            $days = match ($this->filter) {
                 '1m' => 30,
                 '3m' => 90,
                 default => 30,
             };
-            
+
             $startDate = now()->subDays($days - 1)->startOfDay();
-            
+
             // Una sola query para obtener todos los datos
             $results = Maintenance::selectRaw(
                 'DATE(created_at) as date, type, COUNT(*) as count'
@@ -49,31 +49,31 @@ class MaintenanceTrendChart extends ChartWidget
                 ->groupBy('date', 'type')
                 ->get()
                 ->groupBy('date');
-            
+
             for ($i = $days - 1; $i >= 0; $i--) {
                 $date = now()->subDays($i);
                 $dateString = $date->toDateString();
                 $dayLabel = $date->locale('es')->format('d M');
-                
+
                 $dayData = $results->get($dateString, collect());
                 $preventive = $dayData->firstWhere('type', 'Preventivo')?->count ?? 0;
                 $corrective = $dayData->firstWhere('type', 'Correctivo')?->count ?? 0;
-                
+
                 $labels[] = $dayLabel;
                 $data['preventive'][] = $preventive;
                 $data['corrective'][] = $corrective;
             }
         } else {
             // Para 6 meses, 1 año y 2 años, mostrar por meses
-            $months = match($this->filter) {
+            $months = match ($this->filter) {
                 '6m' => 6,
                 '1y' => 12,
                 'all' => 24,
                 default => 6,
             };
-            
+
             $startDate = now()->subMonths($months - 1)->startOfMonth();
-            
+
             // Una sola query para obtener todos los datos
             $results = Maintenance::selectRaw(
                 'EXTRACT(YEAR FROM created_at) as year, EXTRACT(MONTH FROM created_at) as month, type, COUNT(*) as count'
@@ -82,16 +82,16 @@ class MaintenanceTrendChart extends ChartWidget
                 ->groupBy('year', 'month', 'type')
                 ->get()
                 ->groupBy(fn($item) => $item->year . '-' . str_pad($item->month, 2, '0', STR_PAD_LEFT));
-            
+
             for ($i = $months - 1; $i >= 0; $i--) {
                 $date = now()->subMonths($i);
                 $monthKey = $date->year . '-' . str_pad($date->month, 2, '0', STR_PAD_LEFT);
                 $monthName = $date->locale('es')->format('M Y');
-                
+
                 $monthData = $results->get($monthKey, collect());
                 $preventive = $monthData->firstWhere('type', 'Preventivo')?->count ?? 0;
                 $corrective = $monthData->firstWhere('type', 'Correctivo')?->count ?? 0;
-                
+
                 $labels[] = $monthName;
                 $data['preventive'][] = $preventive;
                 $data['corrective'][] = $corrective;

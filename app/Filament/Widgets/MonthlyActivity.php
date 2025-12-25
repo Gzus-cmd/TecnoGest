@@ -18,7 +18,7 @@ class MonthlyActivity extends BaseWidget
     use HasWidgetShield;
 
     protected static ?int $sort = 5;
-    
+
     protected int | string | array $columnSpan = 'full';
 
     protected function getStats(): array
@@ -30,8 +30,8 @@ class MonthlyActivity extends BaseWidget
 
         // Optimización: Obtener conteos de dispositivos con una sola query usando UNION
         $deviceStats = DB::select("
-            SELECT 
-                CASE 
+            SELECT
+                CASE
                     WHEN EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? THEN 'current'
                     WHEN EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ? THEN 'last'
                 END as period,
@@ -47,10 +47,16 @@ class MonthlyActivity extends BaseWidget
                OR (EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ?)
             GROUP BY period
         ", [
-            $currentMonth, $currentYear, $lastMonth, $lastYear,
-            $currentMonth, $currentYear, $lastMonth, $lastYear
+            $currentMonth,
+            $currentYear,
+            $lastMonth,
+            $lastYear,
+            $currentMonth,
+            $currentYear,
+            $lastMonth,
+            $lastYear
         ]);
-        
+
         $newDevicesThisMonth = collect($deviceStats)->firstWhere('period', 'current')?->count ?? 0;
         $devicesLastMonth = collect($deviceStats)->firstWhere('period', 'last')?->count ?? 0;
 
@@ -67,7 +73,7 @@ class MonthlyActivity extends BaseWidget
             ->whereMonth('created_at', $currentMonth)
             ->whereYear('created_at', $currentYear)
             ->first();
-        
+
         $maintenancesThisMonth = $maintenanceStats->total ?? 0;
         $completedMaintenances = $maintenanceStats->completed ?? 0;
 
@@ -76,7 +82,7 @@ class MonthlyActivity extends BaseWidget
             ->whereYear('date', $currentYear)
             ->count();
 
-        $deviceTrend = $devicesLastMonth > 0 
+        $deviceTrend = $devicesLastMonth > 0
             ? round((($newDevicesThisMonth - $devicesLastMonth) / $devicesLastMonth) * 100, 1)
             : 0;
 
@@ -86,17 +92,17 @@ class MonthlyActivity extends BaseWidget
                 ->descriptionIcon($deviceTrend >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($deviceTrend >= 0 ? 'success' : 'danger')
                 ->chart([$devicesLastMonth, $newDevicesThisMonth]),
-            
+
             Stat::make('Componentes Agregados (Este Mes)', $newComponentsThisMonth)
                 ->description('Nuevos en inventario')
                 ->descriptionIcon('heroicon-m-cube')
                 ->color('info'),
-            
+
             Stat::make('Mantenimientos (Este Mes)', $maintenancesThisMonth)
                 ->description("{$completedMaintenances} completados")
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color($completedMaintenances === $maintenancesThisMonth ? 'success' : 'warning'),
-            
+
             Stat::make('Traslados (Este Mes)', $transfersThisMonth)
                 ->description('Movimientos de equipos')
                 ->descriptionIcon('heroicon-m-arrow-path')

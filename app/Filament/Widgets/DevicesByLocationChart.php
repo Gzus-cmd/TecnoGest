@@ -14,11 +14,11 @@ class DevicesByLocationChart extends ChartWidget
     use HasWidgetShield;
 
     protected ?string $heading = 'Dispositivos por Ubicación';
-    
+
     protected static ?int $sort = 6;
-    
+
     protected int | string | array $columnSpan = 'full';
-    
+
     public function getMaxHeight(): ?string
     {
         return '250px';
@@ -29,12 +29,13 @@ class DevicesByLocationChart extends ChartWidget
         // Optimización: Usar withCount para cargar conteos en una sola query
         $locations = Location::withCount(['computers', 'printers', 'projectors'])
             ->get()
-            ->filter(fn($location) => 
-                $location->computers_count > 0 || 
-                $location->printers_count > 0 || 
-                $location->projectors_count > 0
+            ->filter(
+                fn($location) =>
+                $location->computers_count > 0 ||
+                    $location->printers_count > 0 ||
+                    $location->projectors_count > 0
             );
-        
+
         $locationNames = [];
         $computerCounts = [];
         $printerCounts = [];
