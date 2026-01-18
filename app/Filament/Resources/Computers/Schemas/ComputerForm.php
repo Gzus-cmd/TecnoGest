@@ -139,14 +139,14 @@ class ComputerForm
                                     ? $livewire->getRecord() 
                                     : null;
                                 
-                                $query = Component::where('componentable_type', 'App\Models\Motherboard')
+                                $query = Component::where('componentable_type', 'Motherboard')
                                     ->where('status', 'Operativo')
                                     ->whereNull('output_date');
                                 
                                 if ($currentRecord) {
                                     // Si estamos editando, incluir componente actual O disponibles
                                     $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\Motherboard')
+                                        ->where('components.componentable_type', 'Motherboard')
                                         ->first()?->id;
                                     
                                     if ($currentId) {
@@ -199,14 +199,14 @@ class ComputerForm
                                     ? $livewire->getRecord() 
                                     : null;
                                 
-                                $query = Component::where('componentable_type', 'App\Models\CPU')
+                                $query = Component::where('componentable_type', 'CPU')
                                     ->where('status', 'Operativo')
                                     ->whereNull('output_date');
                                 
                                 if ($currentRecord) {
                                     // Si estamos editando, incluir componente actual O disponibles
                                     $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\CPU')
+                                        ->where('components.componentable_type', 'CPU')
                                         ->first()?->id;
                                     
                                     if ($currentId) {
@@ -246,13 +246,13 @@ class ComputerForm
                                     ? $livewire->getRecord() 
                                     : null;
                                 
-                                $query = Component::where('componentable_type', 'App\Models\GPU')
+                                $query = Component::where('componentable_type', 'GPU')
                                     ->where('status', 'Operativo')
                                     ->whereNull('output_date');
                                 
                                 if ($currentRecord) {
                                     $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\GPU')
+                                        ->where('components.componentable_type', 'GPU')
                                         ->first()?->id;
                                     
                                     if ($currentId) {
@@ -286,14 +286,14 @@ class ComputerForm
                                             ? $livewire->getRecord() 
                                             : null;
                                         
-                                        $query = Component::where('componentable_type', 'App\Models\RAM')
+                                        $query = Component::where('componentable_type', 'RAM')
                                             ->where('status', 'Operativo')
                                             ->whereNull('output_date');
                                         
                                         if ($currentRecord) {
                                             // Si estamos editando, incluir componentes actuales O disponibles
                                             $currentIds = $currentRecord->components()
-                                                ->where('components.componentable_type', 'App\Models\RAM')
+                                                ->where('components.componentable_type', 'RAM')
                                                 ->pluck('components.id')
                                                 ->toArray();
                                             
@@ -345,14 +345,14 @@ class ComputerForm
                                             ? $livewire->getRecord() 
                                             : null;
                                         
-                                        $query = Component::where('componentable_type', 'App\Models\ROM')
+                                        $query = Component::where('componentable_type', 'ROM')
                                             ->where('status', 'Operativo')
                                             ->whereNull('output_date');
                                         
                                         if ($currentRecord) {
                                             // Si estamos editando, incluir componentes actuales O disponibles
                                             $currentIds = $currentRecord->components()
-                                                ->where('components.componentable_type', 'App\Models\ROM')
+                                                ->where('components.componentable_type', 'ROM')
                                                 ->pluck('components.id')
                                                 ->toArray();
                                             
@@ -403,13 +403,13 @@ class ComputerForm
                                     ? $livewire->getRecord() 
                                     : null;
                                 
-                                $query = Component::where('componentable_type', 'App\Models\PowerSupply')
+                                $query = Component::where('componentable_type', 'PowerSupply')
                                     ->where('status', 'Operativo')
                                     ->whereNull('output_date');
                                 
                                 if ($currentRecord) {
                                     $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\PowerSupply')
+                                        ->where('components.componentable_type', 'PowerSupply')
                                         ->first()?->id;
                                     
                                     if ($currentId) {
@@ -441,13 +441,13 @@ class ComputerForm
                                     ? $livewire->getRecord() 
                                     : null;
                                 
-                                $query = Component::where('componentable_type', 'App\Models\TowerCase')
+                                $query = Component::where('componentable_type', 'TowerCase')
                                     ->where('status', 'Operativo')
                                     ->whereNull('output_date');
                                 
                                 if ($currentRecord) {
                                     $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\TowerCase')
+                                        ->where('components.componentable_type', 'TowerCase')
                                         ->first()?->id;
                                     
                                     if ($currentId) {
@@ -479,13 +479,13 @@ class ComputerForm
                                     ? $livewire->getRecord() 
                                     : null;
                                 
-                                $query = Component::where('componentable_type', 'App\Models\NetworkAdapter')
+                                $query = Component::where('componentable_type', 'NetworkAdapter')
                                     ->where('status', 'Operativo')
                                     ->whereNull('output_date');
                                 
                                 if ($currentRecord) {
                                     $currentId = $currentRecord->components()
-                                        ->where('components.componentable_type', 'App\Models\NetworkAdapter')
+                                        ->where('components.componentable_type', 'NetworkAdapter')
                                         ->first()?->id;
                                     
                                     if ($currentId) {
@@ -521,7 +521,7 @@ class ComputerForm
                                 Select::make('component_id')
                                     ->label('Monitor')
                                     ->options(function () {
-                                        return Component::where('componentable_type', 'App\Models\Monitor')
+                                        return Component::where('componentable_type', 'Monitor')
                                             ->where('status', 'Operativo')
                                             ->whereDoesntHave('peripheral')
                                             ->get()
@@ -542,7 +542,7 @@ class ComputerForm
                             Select::make('keyboard_component_id')
                                 ->label('Teclado')
                                 ->options(function () {
-                                    return Component::where('componentable_type', 'App\Models\Keyboard')
+                                    return Component::where('componentable_type', 'Keyboard')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
@@ -556,7 +556,7 @@ class ComputerForm
                             Select::make('mouse_component_id')
                                 ->label('Mouse')
                                 ->options(function () {
-                                    return Component::where('componentable_type', 'App\Models\Mouse')
+                                    return Component::where('componentable_type', 'Mouse')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
@@ -570,7 +570,7 @@ class ComputerForm
                             Select::make('audio_component_id')
                                 ->label('Dispositivo de Audio')
                                 ->options(function () {
-                                    return Component::where('componentable_type', 'App\Models\AudioDevice')
+                                    return Component::where('componentable_type', 'AudioDevice')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
@@ -584,7 +584,7 @@ class ComputerForm
                             Select::make('stabilizer_component_id')
                                 ->label('Estabilizador')
                                 ->options(function () {
-                                    return Component::where('componentable_type', 'App\Models\Stabilizer')
+                                    return Component::where('componentable_type', 'Stabilizer')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
@@ -598,7 +598,7 @@ class ComputerForm
                             Select::make('splitter_component_id')
                                 ->label('Splitter')
                                 ->options(function () {
-                                    return Component::where('componentable_type', 'App\Models\Splitter')
+                                    return Component::where('componentable_type', 'Splitter')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()

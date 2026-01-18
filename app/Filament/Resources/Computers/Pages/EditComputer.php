@@ -24,24 +24,24 @@ class EditComputer extends EditRecord
         // Cargar componentes periféricos si existen
         if ($peripheral) {
             $data['monitors'] = $peripheral->components()
-                ->where('components.componentable_type', 'App\Models\Monitor')
+                ->where('components.componentable_type', 'Monitor')
                 ->get()
                 ->map(fn($component) => ['component_id' => $component->id])
                 ->toArray();
 
-            $keyboard = $peripheral->components()->where('components.componentable_type', 'App\Models\Keyboard')->first();
+            $keyboard = $peripheral->components()->where('components.componentable_type', 'Keyboard')->first();
             $data['keyboard_component_id'] = $keyboard?->id;
 
-            $mouse = $peripheral->components()->where('components.componentable_type', 'App\Models\Mouse')->first();
+            $mouse = $peripheral->components()->where('components.componentable_type', 'Mouse')->first();
             $data['mouse_component_id'] = $mouse?->id;
 
-            $audio = $peripheral->components()->where('components.componentable_type', 'App\Models\AudioDevice')->first();
+            $audio = $peripheral->components()->where('components.componentable_type', 'AudioDevice')->first();
             $data['audio_component_id'] = $audio?->id;
 
-            $stabilizer = $peripheral->components()->where('components.componentable_type', 'App\Models\Stabilizer')->first();
+            $stabilizer = $peripheral->components()->where('components.componentable_type', 'Stabilizer')->first();
             $data['stabilizer_component_id'] = $stabilizer?->id;
 
-            $splitter = $peripheral->components()->where('components.componentable_type', 'App\Models\Splitter')->first();
+            $splitter = $peripheral->components()->where('components.componentable_type', 'Splitter')->first();
             $data['splitter_component_id'] = $splitter?->id;
         }
 
