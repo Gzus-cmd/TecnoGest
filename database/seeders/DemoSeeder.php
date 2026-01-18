@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\Hash;
 
 /**
  * Seeder de DESARROLLO/DEMO - Carga todos los datos de prueba
- * 
+ *
  * Uso: php artisan db:seed --class=DemoSeeder
  *   o: php artisan db:seed (por defecto)
- * 
+ *
  * Incluye:
  * - Todo lo del ProductionSeeder
  * - Ubicaciones de prueba
@@ -41,7 +41,7 @@ class DemoSeeder extends Seeder
         // 1. USUARIOS DE PRUEBA
         // ═══════════════════════════════════════════════════════════════
         $this->command->info('👤 Creando usuarios de prueba...');
-        
+
         User::firstOrCreate(
             ['email' => 'admin@tecnogest.com'],
             [
@@ -85,10 +85,10 @@ class DemoSeeder extends Seeder
         // ═══════════════════════════════════════════════════════════════
         $this->command->info('🔐 Configurando roles y permisos...');
         $this->call(RoleAndPermissionSeeder::class);
-        
+
         // Generar permisos de Filament Shield
         $this->call(ShieldSeeder::class);
-        
+
         // Permisos personalizados para acciones específicas
         $this->call(CustomPermissionsSeeder::class);
 
@@ -142,14 +142,14 @@ class DemoSeeder extends Seeder
         $this->call([
             // Periféricos
             PeripheralsSeeder::class,
-            
+
             // Sistemas Operativos
             OSSeeder::class,
-            
+
             // Modelos de dispositivos
             PrinterModelSeeder::class,
             ProjectorModelSeeder::class,
-            
+
             // Catálogo de repuestos
             SparePartSeeder::class,
             SparePartComponentSeeder::class,
@@ -164,6 +164,9 @@ class DemoSeeder extends Seeder
             ComputerSeeder::class,
             PrinterSeeder::class,
             ProjectorSeeder::class,
+
+            // Componentes para impresoras y proyectores
+            PrinterProjectorComponentsSeeder::class,
         ]);
 
         $this->command->newLine();

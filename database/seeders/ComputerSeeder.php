@@ -29,7 +29,7 @@ class ComputerSeeder extends Seeder
         $normalLocations = Location::where('is_workshop', false)->get();
         $workshopLocation = Location::where('is_workshop', true)->first();
         $operatingSystems = OS::all();
-        
+
         if ($normalLocations->isEmpty()) {
             $this->command->warn('⚠️ No hay ubicaciones disponibles. Ejecuta LocationSeeder primero.');
             return;
@@ -44,14 +44,14 @@ class ComputerSeeder extends Seeder
         $computersCreated = 0;
         $activeCount = 0;
         $inactiveCount = 0;
-        
+
         for ($i = 1; $i <= 10; $i++) {
             $os = $operatingSystems->random();
-            
+
             // Decidir si será Activa o Inactiva
             // 70% Activas, 30% Inactivas
             $isActive = rand(1, 100) <= 70;
-            
+
             if ($isActive) {
                 // PCs ACTIVAS: En ubicaciones normales con periférico
                 $location = $normalLocations->random();
@@ -63,7 +63,7 @@ class ComputerSeeder extends Seeder
                 $status = 'Inactivo';
                 $inactiveCount++;
             }
-            
+
             // Crear la computadora
             $computer = Computer::create([
                 'serial' => 'PC-' . str_pad($i, 5, '0', STR_PAD_LEFT),
@@ -75,12 +75,12 @@ class ComputerSeeder extends Seeder
 
             // Asignar componentes internos (CPU) a la computadora
             $this->assignComponents($computer);
-            
+
             // Si es ACTIVA, crear y asignar periférico
             if ($isActive) {
                 $this->createAndAssignPeripheral($computer);
             }
-            
+
             $computersCreated++;
         }
 
@@ -88,7 +88,7 @@ class ComputerSeeder extends Seeder
         $this->command->info("   📍 Activas (con periférico): {$activeCount}");
         $this->command->info("   📍 Inactivas (en taller): {$inactiveCount}");
     }
-    
+
     /**
      * Crear y asignar periférico a una computadora activa
      */
@@ -101,10 +101,10 @@ class ComputerSeeder extends Seeder
             'location_id' => $computer->location_id,
             'computer_id' => $computer->id,
         ]);
-        
+
         // Asignar periférico a la computadora
         $computer->update(['peripheral_id' => $peripheral->id]);
-        
+
         // Asignar componentes al periférico (monitores, teclado, mouse, etc.)
         $this->assignPeripheralComponents($peripheral);
     }
@@ -115,37 +115,37 @@ class ComputerSeeder extends Seeder
     private function assignComponents(Computer $computer): void
     {
         // Obtener componentes disponibles (operativos y sin asignar)
-        $availableCPUs = Component::where('componentable_type', CPU::class)
+        $availableCPUs = Component::where('componentable_type', 'CPU')
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
 
-        $availableGPUs = Component::where('componentable_type', GPU::class)
+        $availableGPUs = Component::where('componentable_type', 'GPU')
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
 
-        $availableRAMs = Component::where('componentable_type', RAM::class)
+        $availableRAMs = Component::where('componentable_type', 'RAM')
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
 
-        $availableROMs = Component::where('componentable_type', ROM::class)
+        $availableROMs = Component::where('componentable_type', 'ROM')
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
 
-        $availableMotherboards = Component::where('componentable_type', Motherboard::class)
+        $availableMotherboards = Component::where('componentable_type', 'Motherboard')
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
 
-        $availablePSUs = Component::where('componentable_type', PowerSupply::class)
+        $availablePSUs = Component::where('componentable_type', 'PowerSupply')
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
 
-        $availableCases = Component::where('componentable_type', TowerCase::class)
+        $availableCases = Component::where('componentable_type', 'TowerCase')
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
@@ -213,23 +213,23 @@ class ComputerSeeder extends Seeder
         // Asignar todos los componentes internos
         $computer->components()->attach($componentsToAttach);
     }
-    
+
     /**
      * Asignar componentes periféricos (monitores, teclado, mouse, etc.)
      */
     private function assignPeripheralComponents(\App\Models\Peripheral $peripheral): void
     {
-        $availableMonitors = Component::where('componentable_type', Monitor::class)
+        $availableMonitors = Component::where('componentable_type', 'Monitor')
             ->where('status', 'Operativo')
             ->whereDoesntHave('peripheral')
             ->get();
 
-        $availableKeyboards = Component::where('componentable_type', Keyboard::class)
+        $availableKeyboards = Component::where('componentable_type', 'Keyboard')
             ->where('status', 'Operativo')
             ->whereDoesntHave('peripheral')
             ->get();
 
-        $availableMice = Component::where('componentable_type', Mouse::class)
+        $availableMice = Component::where('componentable_type', 'Mouse')
             ->where('status', 'Operativo')
             ->whereDoesntHave('peripheral')
             ->get();

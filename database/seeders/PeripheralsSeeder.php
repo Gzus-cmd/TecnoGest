@@ -108,7 +108,7 @@ class PeripheralsSeeder extends Seeder
     {
         foreach ($items as $itemData) {
             $item = $modelClass::firstOrCreate($itemData);
-            
+
             // Crear 3 componentes por periférico
             for ($i = 0; $i < 3; $i++) {
                 // 60% Operativo, 20% Deficiente, 20% Retirado
@@ -120,11 +120,11 @@ class PeripheralsSeeder extends Seeder
                 } else {
                     $status = 'Retirado';
                 }
-                
+
                 $inputDate = now()->subMonths(rand(1, 24));
 
                 Component::create([
-                    'componentable_type' => $modelClass,
+                    'componentable_type' => class_basename($modelClass),
                     'componentable_id' => $item->id,
                     'serial' => $prefix . '-' . strtoupper(bin2hex(random_bytes(5))),
                     'input_date' => $inputDate->toDateString(),
