@@ -46,7 +46,7 @@ class TransferResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['deviceable', 'origin', 'destiny', 'user', 'registeredBy', 'updatedBy']);
+            ->with(['deviceable', 'origin', 'destiny', 'registeredBy', 'updatedBy']);
     }
 
     public static function getRelations(): array

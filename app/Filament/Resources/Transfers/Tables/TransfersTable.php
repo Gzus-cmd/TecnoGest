@@ -85,9 +85,9 @@ class TransfersTable
             ->filters([
                 SelectFilter::make('deviceable_type')
                     ->options([
-                        'App\Models\Computer' => 'Computadora',
-                        'App\Models\Printer' => 'Impresora',
-                        'App\Models\Projector' => 'Proyector',
+                        'Computer' => 'Computadora',
+                        'Printer' => 'Impresora',
+                        'Projector' => 'Proyector',
                     ])
                     ->multiple()
                     ->label('Tipo de Dispositivo'),
@@ -157,13 +157,13 @@ class TransfersTable
                         [$type, $id] = explode('-', $value);
                         
                         if ($type === 'computer') {
-                            return $query->where('deviceable_type', 'App\Models\Computer')
+                            return $query->where('deviceable_type', 'Computer')
                                 ->where('deviceable_id', $id);
                         } elseif ($type === 'printer') {
-                            return $query->where('deviceable_type', 'App\Models\Printer')
+                            return $query->where('deviceable_type', 'Printer')
                                 ->where('deviceable_id', $id);
                         } elseif ($type === 'projector') {
-                            return $query->where('deviceable_type', 'App\Models\Projector')
+                            return $query->where('deviceable_type', 'Projector')
                                 ->where('deviceable_id', $id);
                         }
                         

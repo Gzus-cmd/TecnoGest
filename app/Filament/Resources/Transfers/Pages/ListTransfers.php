@@ -41,10 +41,10 @@ class ListTransfers extends ListRecords
                     Select::make('device_type')
                         ->label('Tipo de Dispositivo')
                         ->options([
-                            'App\Models\Computer' => 'CPU',
-                            'App\Models\Printer' => 'Impresora',
-                            'App\Models\Projector' => 'Proyector',
-                            'App\Models\Peripheral' => 'Periféricos',
+                            'Computer' => 'CPU',
+                            'Printer' => 'Impresora',
+                            'Projector' => 'Proyector',
+                            'Peripheral' => 'Periféricos',
                         ])
                         ->required()
                         ->live()
@@ -70,9 +70,9 @@ class ListTransfers extends ListRecords
                                     $locationName = $device->location?->name ?? 'Sin ubicación';
                                     $status = " [{$device->status}]";
                                     
-                                    if ($type === 'App\Models\Computer') {
+                                    if ($type === 'Computer') {
                                         $label = "{$device->serial} - {$locationName}{$status}";
-                                    } elseif ($type === 'App\Models\Peripheral') {
+                                    } elseif ($type === 'Peripheral') {
                                         $label = "{$device->code} - {$locationName}{$status}";
                                     } else {
                                         $label = "{$device->serial} - {$locationName}{$status}";
@@ -87,7 +87,7 @@ class ListTransfers extends ListRecords
                         ->label('Intercambiar Periféricos')
                         ->helperText('Intercambiar también los periféricos asignados')
                         ->default(true)
-                        ->visible(fn (Get $get) => $get('device_type') === 'App\Models\Computer'),
+                        ->visible(fn (Get $get) => $get('device_type') === 'Computer'),
                     
                     Select::make('device_2_id')
                         ->label('Dispositivo 2')
@@ -106,9 +106,9 @@ class ListTransfers extends ListRecords
                                     $locationName = $device->location?->name ?? 'Sin ubicación';
                                     $status = " [{$device->status}]";
                                     
-                                    if ($type === 'App\Models\Computer') {
+                                    if ($type === 'Computer') {
                                         $label = "{$device->serial} - {$locationName}{$status}";
-                                    } elseif ($type === 'App\Models\Peripheral') {
+                                    } elseif ($type === 'Peripheral') {
                                         $label = "{$device->code} - {$locationName}{$status}";
                                     } else {
                                         $label = "{$device->serial} - {$locationName}{$status}";
