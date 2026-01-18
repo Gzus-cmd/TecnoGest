@@ -31,7 +31,7 @@ class GPUSeeder extends Seeder
 
         foreach ($gpus as $gpuData) {
             $gpu = GPU::firstOrCreate($gpuData);
-            
+
             // Crear 3 componentes por GPU
             for ($i = 0; $i < 3; $i++) {
                 // 60% Operativo, 20% Deficiente, 20% Retirado
@@ -43,11 +43,11 @@ class GPUSeeder extends Seeder
                 } else {
                     $status = 'Retirado';
                 }
-                
+
                 $inputDate = now()->subMonths(rand(1, 24));
 
                 Component::create([
-                    'componentable_type' => GPU::class,
+                    'componentable_type' => 'GPU',
                     'componentable_id' => $gpu->id,
                     'serial' => 'GPU-' . strtoupper(bin2hex(random_bytes(5))),
                     'input_date' => $inputDate->toDateString(),

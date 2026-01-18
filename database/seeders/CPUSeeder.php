@@ -34,7 +34,7 @@ class CPUSeeder extends Seeder
 
         foreach ($cpus as $cpuData) {
             $cpu = CPU::firstOrCreate($cpuData);
-            
+
             // Crear 3 componentes por CPU (para tener más disponibles)
             for ($i = 0; $i < 3; $i++) {
                 // 60% Operativo, 20% Deficiente, 20% Retirado
@@ -46,11 +46,11 @@ class CPUSeeder extends Seeder
                 } else {
                     $status = 'Retirado';
                 }
-                
+
                 $inputDate = now()->subMonths(rand(1, 24));
-                
+
                 Component::create([
-                    'componentable_type' => CPU::class,
+                    'componentable_type' => 'CPU',
                     'componentable_id' => $cpu->id,
                     'serial' => 'CPU-' . strtoupper(bin2hex(random_bytes(5))),
                     'input_date' => $inputDate->toDateString(),

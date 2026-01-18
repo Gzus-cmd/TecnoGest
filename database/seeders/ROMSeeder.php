@@ -32,7 +32,7 @@ class ROMSeeder extends Seeder
 
         foreach ($roms as $romData) {
             $rom = ROM::firstOrCreate($romData);
-            
+
             // Crear 3 componentes por ROM
             for ($i = 0; $i < 3; $i++) {
                 // 60% Operativo, 20% Deficiente, 20% Retirado
@@ -44,11 +44,11 @@ class ROMSeeder extends Seeder
                 } else {
                     $status = 'Retirado';
                 }
-                
+
                 $inputDate = now()->subMonths(rand(1, 24));
 
                 Component::create([
-                    'componentable_type' => ROM::class,
+                    'componentable_type' => 'ROM',
                     'componentable_id' => $rom->id,
                     'serial' => 'ROM-' . strtoupper(bin2hex(random_bytes(5))),
                     'input_date' => $inputDate->toDateString(),

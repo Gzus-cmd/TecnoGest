@@ -29,7 +29,7 @@ class MotherboardSeeder extends Seeder
 
         foreach ($motherboards as $mbData) {
             $mb = Motherboard::firstOrCreate($mbData);
-            
+
             // Crear 3 componentes por Motherboard
             for ($i = 0; $i < 3; $i++) {
                 // 60% Operativo, 20% Deficiente, 20% Retirado
@@ -41,11 +41,11 @@ class MotherboardSeeder extends Seeder
                 } else {
                     $status = 'Retirado';
                 }
-                
+
                 $inputDate = now()->subMonths(rand(1, 24));
 
                 Component::create([
-                    'componentable_type' => Motherboard::class,
+                    'componentable_type' => 'Motherboard',
                     'componentable_id' => $mb->id,
                     'serial' => 'MB-' . strtoupper(bin2hex(random_bytes(5))),
                     'input_date' => $inputDate->toDateString(),

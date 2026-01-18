@@ -16,7 +16,7 @@ class SparePartComponentSeeder extends Seeder
     {
         $spareParts = SparePart::all();
         $provider = Provider::first();
-        
+
         if ($spareParts->isEmpty()) {
             $this->command->warn('⚠️ No hay repuestos en el catálogo. Ejecuta SparePartSeeder primero.');
             return;
@@ -33,13 +33,13 @@ class SparePartComponentSeeder extends Seeder
         // Crear 1-2 instancias por cada modelo de repuesto
         foreach ($spareParts as $sparePart) {
             $instanceCount = rand(1, 2);
-            
+
             for ($i = 0; $i < $instanceCount; $i++) {
                 $status = collect($statuses)->random();
                 $inputDate = now()->subMonths(rand(1, 24));
-                
+
                 Component::create([
-                    'componentable_type' => SparePart::class,
+                    'componentable_type' => 'SparePart',
                     'componentable_id' => $sparePart->id,
                     'serial' => 'SPARE-' . strtoupper(bin2hex(random_bytes(5))),
                     'input_date' => $inputDate->toDateString(),
@@ -48,7 +48,7 @@ class SparePartComponentSeeder extends Seeder
                     'warranty_months' => rand(12, 36),
                     'provider_id' => $provider->id,
                 ]);
-                
+
                 $instancesCreated++;
             }
         }

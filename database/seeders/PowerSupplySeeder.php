@@ -29,7 +29,7 @@ class PowerSupplySeeder extends Seeder
 
         foreach ($psus as $psuData) {
             $psu = PowerSupply::firstOrCreate($psuData);
-            
+
             // Crear 3 componentes por PSU
             for ($i = 0; $i < 3; $i++) {
                 // 60% Operativo, 20% Deficiente, 20% Retirado
@@ -41,11 +41,11 @@ class PowerSupplySeeder extends Seeder
                 } else {
                     $status = 'Retirado';
                 }
-                
+
                 $inputDate = now()->subMonths(rand(1, 24));
 
                 Component::create([
-                    'componentable_type' => PowerSupply::class,
+                    'componentable_type' => 'PowerSupply',
                     'componentable_id' => $psu->id,
                     'serial' => 'PSU-' . strtoupper(bin2hex(random_bytes(5))),
                     'input_date' => $inputDate->toDateString(),

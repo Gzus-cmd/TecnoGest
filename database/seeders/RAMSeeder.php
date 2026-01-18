@@ -32,7 +32,7 @@ class RAMSeeder extends Seeder
 
         foreach ($rams as $ramData) {
             $ram = RAM::firstOrCreate($ramData);
-            
+
             // Crear 3 componentes por RAM
             for ($i = 0; $i < 3; $i++) {
                 // 60% Operativo, 20% Deficiente, 20% Retirado
@@ -44,11 +44,11 @@ class RAMSeeder extends Seeder
                 } else {
                     $status = 'Retirado';
                 }
-                
+
                 $inputDate = now()->subMonths(rand(1, 24));
 
                 Component::create([
-                    'componentable_type' => RAM::class,
+                    'componentable_type' => 'RAM',
                     'componentable_id' => $ram->id,
                     'serial' => 'RAM-' . strtoupper(bin2hex(random_bytes(5))),
                     'input_date' => $inputDate->toDateString(),
