@@ -29,6 +29,7 @@ class CriticalComponents extends BaseWidget
                     ->latest()
                     ->limit(10)
             )
+            ->paginated(false) // Desactivar paginación para mejorar rendimiento
             ->columns([
                 TextColumn::make('serial')
                     ->label('N° de Serie')
@@ -78,7 +79,7 @@ class CriticalComponents extends BaseWidget
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'Deficiente' => 'warning',
                         'Retirado' => 'danger',
                         default => 'gray',

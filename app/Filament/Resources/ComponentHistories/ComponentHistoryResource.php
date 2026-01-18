@@ -42,13 +42,8 @@ class ComponentHistoryResource extends Resource
         return $table
             ->modifyQueryUsing(function (Builder $query) {
                 // Join con la tabla pivot para obtener el historial
+                // OPTIMIZACIÓN: Eager loading solo cuando es necesario (exportar, etc)
                 $query->join('componentables', 'components.id', '=', 'componentables.component_id')
-                    ->with([
-                        'componentable',
-                        'computers.location',
-                        'printers.location',
-                        'projectors.location'
-                    ])
                     ->select([
                         'components.id',
                         'components.serial',
@@ -59,9 +54,10 @@ class ComponentHistoryResource extends Resource
                         'componentables.componentable_id as device_id',
                         'componentables.assigned_at',
                         'componentables.status as assignment_status',
-                    ])
-                    ->orderBy('componentables.assigned_at', 'desc');
+                    ]);
             })
+            ->defaultPaginationPageOption(25)
+            ->deferLoading()
             ->columns([
                 TextColumn::make('componentable_type')
                     ->label('Tipo / Serial')
@@ -94,44 +90,19 @@ class ComponentHistoryResource extends Resource
 
                 TextColumn::make('componentable.brand')
                     ->label('Marca / Modelo')
-                    ->getStateUsing(function ($record) {
-                        $type = $record->componentable_type;
-                        $id = $record->componentable_id;
-                        if (!$type || !$id) return 'N/A';
-
+                    ->state(function ($record) {
+                        // OPTIMIZACIÓN: Usar eager loading en lugar de queries individuales
                         try {
-                            // Asegurar que el tipo tenga el namespace completo
-                            if (!str_starts_with($type, 'App\\Models\\')) {
-                                $type = 'App\\Models\\' . $type;
-                            }
-
-                            if (!class_exists($type)) return 'N/A';
-
-                            $component = $type::find($id);
-                            if (!$component) return 'N/A';
-
-                            return $component->brand ?? 'N/A';
+                            $component = $record->componentable;
+                            return $component ? ($component->brand ?? 'N/A') : 'N/A';
                         } catch (\Exception $e) {
                             return 'N/A';
                         }
                     })
                     ->description(function ($record) {
-                        $type = $record->componentable_type;
-                        $id = $record->componentable_id;
-                        if (!$type || !$id) return '';
-
                         try {
-                            // Asegurar que el tipo tenga el namespace completo
-                            if (!str_starts_with($type, 'App\\Models\\')) {
-                                $type = 'App\\Models\\' . $type;
-                            }
-
-                            if (!class_exists($type)) return '';
-
-                            $component = $type::find($id);
-                            if (!$component) return '';
-
-                            return "🏷️ " . ($component->model ?? 'N/A');
+                            $component = $record->componentable;
+                            return $component ? ("🏷️ " . ($component->model ?? 'N/A')) : '';
                         } catch (\Exception $e) {
                             return '';
                         }
@@ -140,34 +111,47 @@ class ComponentHistoryResource extends Resource
 
                 TextColumn::make('device_info')
                     ->label('Asignado a')
-                    ->getStateUsing(function ($record) {
+                    ->state(function ($record) {
+                        // OPTIMIZACIÓN: Cachear dispositivos en memoria durante la misma request
+                        static $deviceCache = [];
+
                         $deviceType = $record->device_type ?? null;
                         $deviceId = $record->device_id ?? null;
 
                         if (!$deviceType || !$deviceId) return 'N/A';
 
-                        try {
-                            // Buscar el dispositivo
-                            if (str_contains($deviceType, 'Computer')) {
-                                $device = Computer::find($deviceId);
-                                $type = 'PC';
-                            } elseif (str_contains($deviceType, 'Printer')) {
-                                $device = Printer::find($deviceId);
-                                $type = 'Impresora';
-                            } elseif (str_contains($deviceType, 'Projector')) {
-                                $device = Projector::find($deviceId);
-                                $type = 'Proyector';
-                            } else {
-                                return 'Dispositivo Desconocido';
+                        $cacheKey = $deviceType . '-' . $deviceId;
+
+                        if (!isset($deviceCache[$cacheKey])) {
+                            try {
+                                // Determinar tipo y cargar solo si no está en caché
+                                if (str_contains($deviceType, 'Computer')) {
+                                    $device = Computer::with('location')->find($deviceId);
+                                    $type = 'PC';
+                                } elseif (str_contains($deviceType, 'Printer')) {
+                                    $device = Printer::with('location')->find($deviceId);
+                                    $type = 'Impresora';
+                                } elseif (str_contains($deviceType, 'Projector')) {
+                                    $device = Projector::with('location')->find($deviceId);
+                                    $type = 'Proyector';
+                                } else {
+                                    $deviceCache[$cacheKey] = 'Tipo Desconocido';
+                                    return $deviceCache[$cacheKey];
+                                }
+
+                                if (!$device) {
+                                    $deviceCache[$cacheKey] = 'No encontrado';
+                                    return $deviceCache[$cacheKey];
+                                }
+
+                                $location = $device->location->name ?? 'Sin ubicación';
+                                $deviceCache[$cacheKey] = "{$type}: {$device->serial} ({$location})";
+                            } catch (\Exception $e) {
+                                $deviceCache[$cacheKey] = 'Error';
                             }
-
-                            if (!$device) return 'Dispositivo no encontrado';
-
-                            $location = $device->location->name ?? 'Sin ubicación';
-                            return "{$type}: {$device->serial} ({$location})";
-                        } catch (\Exception $e) {
-                            return 'Error al cargar dispositivo';
                         }
+
+                        return $deviceCache[$cacheKey];
                     }),
 
                 TextColumn::make('assigned_at')

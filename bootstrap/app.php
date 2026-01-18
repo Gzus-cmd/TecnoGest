@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             \App\Http\Middleware\CacheUserPermissions::class,
+            \App\Http\Middleware\CacheAssets::class, // Cachear assets estáticos
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

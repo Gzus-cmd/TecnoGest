@@ -12,6 +12,7 @@ use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class MonthlyActivity extends BaseWidget
 {
@@ -22,6 +23,14 @@ class MonthlyActivity extends BaseWidget
     protected int | string | array $columnSpan = 'full';
 
     protected function getStats(): array
+    {
+        // Cachear las estadísticas por 5 minutos para reducir carga en DB
+        return Cache::remember('dashboard_monthly_stats', 300, function () {
+            return $this->calculateStats();
+        });
+    }
+
+    protected function calculateStats(): array
     {
         $currentMonth = now()->month;
         $currentYear = now()->year;
