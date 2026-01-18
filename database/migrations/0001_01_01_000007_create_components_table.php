@@ -24,11 +24,15 @@ return new class extends Migration
             $table->foreignId('retired_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
 
-            // Índices de rendimiento
+            // Índices de rendimiento optimizados
             $table->index('status', 'idx_components_status');
             $table->index('provider_id', 'idx_components_provider');
             $table->index('input_date', 'idx_components_input_date');
             $table->index(['status', 'provider_id'], 'idx_components_status_provider');
+
+            // Índices adicionales para búsquedas y filtros
+            $table->index('serial', 'idx_serial');
+            $table->index(['componentable_type', 'status'], 'idx_type_status');
         });
     }
 

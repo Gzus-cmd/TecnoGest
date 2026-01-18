@@ -21,10 +21,16 @@ return new class extends Migration
             $table->foreignId('removed_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
 
-            // Índices de rendimiento
+            // Índices de rendimiento optimizados
             $table->index('component_id', 'idx_componentables_component');
             $table->index('status', 'idx_componentables_status');
             $table->index(['componentable_type', 'componentable_id', 'status'], 'idx_componentables_type_id_status');
+
+            // Índices adicionales para historial de componentes
+            $table->index(['component_id', 'status'], 'idx_component_status');
+            $table->index(['componentable_type', 'componentable_id'], 'idx_device_lookup');
+            $table->index('assigned_at', 'idx_assigned_at');
+            $table->index(['component_id', 'assigned_at', 'status'], 'idx_history_main');
         });
     }
 
