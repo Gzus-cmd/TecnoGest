@@ -113,7 +113,7 @@ class PrinterForm
                                             ? $livewire->getRecord() 
                                             : null;
                                         
-                                        $query = Component::where('componentable_type', 'App\Models\Stabilizer')
+                                        $query = Component::where('componentable_type', 'Stabilizer')
                                             ->where('status', 'Operativo');
                                         
                                         // Los estabilizadores pueden estar asignados a múltiples dispositivos
