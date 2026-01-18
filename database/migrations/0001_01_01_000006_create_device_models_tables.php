@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('model');
             $table->string('type');
             $table->boolean('color');
-            $table->boolean('scanner');            
+            $table->boolean('scanner');
             $table->boolean('wifi');
             $table->boolean('ethernet');
             $table->timestamps();
@@ -27,6 +27,7 @@ return new class extends Migration
 
         Schema::create('projector_models', function (Blueprint $table) {
             $table->id();
+            $table->string('brand');
             $table->string('model');
             $table->string('resolution');
             $table->unsignedBigInteger('lumens');

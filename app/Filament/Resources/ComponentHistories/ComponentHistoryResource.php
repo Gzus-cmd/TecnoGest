@@ -125,17 +125,20 @@ class ComponentHistoryResource extends Resource
                         if (!isset($deviceCache[$cacheKey])) {
                             try {
                                 // Determinar tipo y cargar solo si no está en caché
-                                if (str_contains($deviceType, 'Computer')) {
+                                // Detectar tanto nombres con morphMap ('Computer') como con namespace completo
+                                $deviceTypeLower = strtolower($deviceType);
+
+                                if (str_contains($deviceTypeLower, 'computer')) {
                                     $device = Computer::with('location')->find($deviceId);
                                     $type = 'PC';
-                                } elseif (str_contains($deviceType, 'Printer')) {
+                                } elseif (str_contains($deviceTypeLower, 'printer')) {
                                     $device = Printer::with('location')->find($deviceId);
                                     $type = 'Impresora';
-                                } elseif (str_contains($deviceType, 'Projector')) {
+                                } elseif (str_contains($deviceTypeLower, 'projector')) {
                                     $device = Projector::with('location')->find($deviceId);
                                     $type = 'Proyector';
                                 } else {
-                                    $deviceCache[$cacheKey] = 'Tipo Desconocido';
+                                    $deviceCache[$cacheKey] = 'Tipo Desconocido (' . $deviceType . ')';
                                     return $deviceCache[$cacheKey];
                                 }
 
