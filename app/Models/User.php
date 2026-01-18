@@ -96,7 +96,7 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Transfer::class);
     }
 
-    public function maintenances() : HasMany
+    public function maintenances(): HasMany
     {
         return $this->hasMany(Maintenance::class);
     }

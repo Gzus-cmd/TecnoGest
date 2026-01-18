@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\MorphToMany;
 class Computer extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
         'serial',
         'location_id',
@@ -28,17 +28,17 @@ class Computer extends Model
         static::updating(function (Computer $computer) {
             if ($computer->isDirty('peripheral_id') && $computer->peripheral_id) {
                 $peripheral = Peripheral::find($computer->peripheral_id);
-                
+
                 if (!$peripheral) {
                     throw new \Exception('El periférico seleccionado no existe');
                 }
-                
+
                 if ($peripheral->computer_id && $peripheral->computer_id !== $computer->id) {
                     throw new \Exception('El periférico ya está asignado a otra computadora');
                 }
             }
         });
-        
+
         // Sincronización bidireccional Computer ↔ Peripheral
         static::updated(function (Computer $computer) {
             if ($computer->wasChanged('peripheral_id')) {
@@ -49,7 +49,7 @@ class Computer extends Model
                         $peripheral->updateQuietly(['computer_id' => $computer->id]);
                     }
                 }
-                
+
                 // Liberar el periférico anterior
                 $oldPeripheralId = $computer->getOriginal('peripheral_id');
                 if ($oldPeripheralId && $oldPeripheralId !== $computer->peripheral_id) {
@@ -60,15 +60,15 @@ class Computer extends Model
                 }
             }
         });
-        
+
         // Eliminación en cascada
         static::deleting(function (Computer $computer) {
             // Eliminar mantenimientos
             $computer->maintenances()->delete();
-            
+
             // Eliminar traslados
             $computer->transfers()->delete();
-            
+
             // Desvincular componentes (eliminar de tabla pivote)
             $computer->components()->detach();
         });
@@ -87,38 +87,38 @@ class Computer extends Model
         );
     }
 
-    public function location() : BelongsTo
+    public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
     }
 
-    public function peripheral() : BelongsTo
+    public function peripheral(): BelongsTo
     {
         return $this->belongsTo(Peripheral::class);
     }
 
-    public function os() : BelongsTo
+    public function os(): BelongsTo
     {
         return $this->belongsTo(OS::class, 'os_id');
     }
 
-    public function components() : MorphToMany
+    public function components(): MorphToMany
     {
         return $this->morphToMany(Component::class, 'componentable')
             ->withPivot(['assigned_at', 'status'])
             ->withTimestamps()
             ->wherePivot('status', 'Vigente')
             ->whereNotIn('components.componentable_type', [
-                'App\Models\Monitor',
-                'App\Models\Keyboard',
-                'App\Models\Mouse',
-                'App\Models\AudioDevice',
-                'App\Models\Stabilizer',
-                'App\Models\Splitter',
+                'Monitor',
+                'Keyboard',
+                'Mouse',
+                'AudioDevice',
+                'Stabilizer',
+                'Splitter',
             ]); // Solo componentes internos (excluir periféricos)
     }
 
-    public function allComponents() : MorphToMany
+    public function allComponents(): MorphToMany
     {
         return $this->morphToMany(Component::class, 'componentable')
             ->withPivot(['assigned_at', 'status'])
@@ -126,7 +126,7 @@ class Computer extends Model
             ->orderByPivot('assigned_at', 'desc');
     }
 
-    public function removedComponents() : MorphToMany
+    public function removedComponents(): MorphToMany
     {
         return $this->morphToMany(Component::class, 'componentable')
             ->withPivot(['assigned_at', 'status'])
@@ -135,7 +135,7 @@ class Computer extends Model
             ->orderByPivot('assigned_at', 'desc');
     }
 
-    public function dismantledComponents() : MorphToMany
+    public function dismantledComponents(): MorphToMany
     {
         return $this->morphToMany(Component::class, 'componentable')
             ->withPivot(['assigned_at', 'status'])
@@ -147,75 +147,75 @@ class Computer extends Model
     // Métodos helper para obtener componentes específicos
     public function motherboards()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Motherboard');
+        return $this->components()->where('components.componentable_type', 'Motherboard');
     }
 
     public function cpus()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\CPU');
+        return $this->components()->where('components.componentable_type', 'CPU');
     }
 
     public function gpus()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\GPU');
+        return $this->components()->where('components.componentable_type', 'GPU');
     }
 
     public function rams()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\RAM');
+        return $this->components()->where('components.componentable_type', 'RAM');
     }
 
     public function roms()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\ROM');
+        return $this->components()->where('components.componentable_type', 'ROM');
     }
 
     public function monitors()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Monitor');
+        return $this->components()->where('components.componentable_type', 'Monitor');
     }
 
     public function keyboards()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Keyboard');
+        return $this->components()->where('components.componentable_type', 'Keyboard');
     }
 
     public function mice()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Mouse');
+        return $this->components()->where('components.componentable_type', 'Mouse');
     }
 
     public function networkAdapters()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\NetworkAdapter');
+        return $this->components()->where('components.componentable_type', 'NetworkAdapter');
     }
 
     public function powerSupplies()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\PowerSupply');
+        return $this->components()->where('components.componentable_type', 'PowerSupply');
     }
 
     public function towerCases()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\TowerCase');
+        return $this->components()->where('components.componentable_type', 'TowerCase');
     }
 
     public function audioDevices()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\AudioDevice');
+        return $this->components()->where('components.componentable_type', 'AudioDevice');
     }
 
     public function stabilizers()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Stabilizer');
+        return $this->components()->where('components.componentable_type', 'Stabilizer');
     }
 
     public function splitters()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Splitter');
+        return $this->components()->where('components.componentable_type', 'Splitter');
     }
 
-    public function maintenances() : MorphMany
+    public function maintenances(): MorphMany
     {
         return $this->morphMany(Maintenance::class, 'deviceable');
     }
@@ -224,6 +224,4 @@ class Computer extends Model
     {
         return $this->morphMany(Transfer::class, 'deviceable');
     }
-    
-
 }

@@ -23,17 +23,17 @@ class Peripheral extends Model
         static::updating(function (Peripheral $peripheral) {
             if ($peripheral->isDirty('computer_id') && $peripheral->computer_id) {
                 $computer = Computer::find($peripheral->computer_id);
-                
+
                 if (!$computer) {
                     throw new \Exception('La computadora seleccionada no existe');
                 }
-                
+
                 if ($computer->peripheral_id && $computer->peripheral_id !== $peripheral->id) {
                     throw new \Exception('La computadora ya tiene un periférico asignado');
                 }
             }
         });
-        
+
         // Sincronización bidireccional Peripheral ↔ Computer
         static::updated(function (Peripheral $peripheral) {
             if ($peripheral->wasChanged('computer_id')) {
@@ -44,7 +44,7 @@ class Peripheral extends Model
                         $computer->updateQuietly(['peripheral_id' => $peripheral->id]);
                     }
                 }
-                
+
                 // Liberar la computadora anterior
                 $oldComputerId = $peripheral->getOriginal('computer_id');
                 if ($oldComputerId && $oldComputerId !== $peripheral->computer_id) {
@@ -120,32 +120,32 @@ class Peripheral extends Model
     // Métodos helper para obtener componentes específicos
     public function monitors()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Monitor');
+        return $this->components()->where('components.componentable_type', 'Monitor');
     }
 
     public function keyboards()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Keyboard');
+        return $this->components()->where('components.componentable_type', 'Keyboard');
     }
 
     public function mice()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Mouse');
+        return $this->components()->where('components.componentable_type', 'Mouse');
     }
 
     public function audioDevices()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\AudioDevice');
+        return $this->components()->where('components.componentable_type', 'AudioDevice');
     }
 
     public function stabilizers()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Stabilizer');
+        return $this->components()->where('components.componentable_type', 'Stabilizer');
     }
 
     public function splitters()
     {
-        return $this->components()->where('components.componentable_type', 'App\Models\Splitter');
+        return $this->components()->where('components.componentable_type', 'Splitter');
     }
 
     /**
