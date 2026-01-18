@@ -14,9 +14,9 @@ class RecentTransfers extends BaseWidget
     use HasWidgetShield;
 
     protected static ?string $heading = 'Últimos Traslados de Equipos';
-    
+
     protected static ?int $sort = 8;
-    
+
     protected int | string | array $columnSpan = 'full';
 
     public function table(Table $table): Table
@@ -24,7 +24,7 @@ class RecentTransfers extends BaseWidget
         return $table
             ->query(
                 Transfer::query()
-                    ->with(['deviceable', 'origin', 'destiny', 'user', 'registeredBy', 'updatedBy'])
+                    ->with(['deviceable', 'origin', 'destiny', 'registeredBy', 'updatedBy'])
                     ->latest()
                     ->limit(10)
             )
@@ -40,31 +40,31 @@ class RecentTransfers extends BaseWidget
                         };
                     })
                     ->badge()
-                    ->color(fn ($state) => match (true) {
+                    ->color(fn($state) => match (true) {
                         str_contains($state, 'Computer') => 'primary',
                         str_contains($state, 'Printer') => 'success',
                         str_contains($state, 'Projector') => 'warning',
                         default => 'gray',
                     }),
-                
+
                 TextColumn::make('deviceable.serial')
                     ->label('Serial')
                     ->searchable(),
-                
+
                 TextColumn::make('origin.name')
                     ->label('Origen')
                     ->searchable()
-                    ->description(fn ($record) => "Pab: {$record->origin->pavilion}"),
-                
+                    ->description(fn($record) => "Pab: {$record->origin->pavilion}"),
+
                 TextColumn::make('destiny.name')
                     ->label('Destino')
                     ->searchable()
-                    ->description(fn ($record) => "Pab: {$record->destiny->pavilion}"),
-                
-                TextColumn::make('user.name')
-                    ->label('Responsable')
+                    ->description(fn($record) => "Pab: {$record->destiny->pavilion}"),
+
+                TextColumn::make('registeredBy.name')
+                    ->label('Registrado por')
                     ->searchable(),
-                
+
                 TextColumn::make('date')
                     ->label('Fecha')
                     ->date()

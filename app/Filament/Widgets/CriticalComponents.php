@@ -14,9 +14,9 @@ class CriticalComponents extends BaseWidget
     use HasWidgetShield;
 
     protected static ?string $heading = 'Componentes Deficientes o Retirados';
-    
+
     protected static ?int $sort = 9;
-    
+
     protected int | string | array $columnSpan = 'full';
 
     public function table(Table $table): Table
@@ -33,7 +33,7 @@ class CriticalComponents extends BaseWidget
                 TextColumn::make('serial')
                     ->label('N° de Serie')
                     ->searchable(),
-                
+
                 TextColumn::make('componentable_type')
                     ->label('Tipo')
                     ->formatStateUsing(function ($state) {
@@ -52,28 +52,29 @@ class CriticalComponents extends BaseWidget
                             str_contains($state, 'TowerCase') => 'Gabinete',
                             str_contains($state, 'Splitter') => 'Splitter',
                             str_contains($state, 'AudioDevice') => 'Dispositivo de Audio',
+                            str_contains($state, 'SparePart') => 'Pieza de Repuesto',
                             default => $state,
                         };
                     })
                     ->searchable(),
-                
+
                 TextColumn::make('componentable.model')
                     ->label('Modelo')
                     ->getStateUsing(function ($record) {
                         $componentable = $record->componentable;
                         if (!$componentable) return '-';
-                        
+
                         if (method_exists($componentable, 'model') || isset($componentable->model)) {
                             return $componentable->model ?? '-';
                         }
-                        
+
                         if (isset($componentable->brand) && isset($componentable->model)) {
                             return "{$componentable->brand} {$componentable->model}";
                         }
-                        
+
                         return '-';
                     }),
-                
+
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
@@ -82,15 +83,15 @@ class CriticalComponents extends BaseWidget
                         'Retirado' => 'danger',
                         default => 'gray',
                     }),
-                
+
                 TextColumn::make('provider.name')
                     ->label('Proveedor')
                     ->searchable(),
-                
+
                 TextColumn::make('warranty_months')
                     ->label('Garantía (meses)')
                     ->numeric(),
-                
+
                 TextColumn::make('input_date')
                     ->label('Entrada')
                     ->date(),
