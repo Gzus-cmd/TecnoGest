@@ -84,7 +84,7 @@ class PeripheralForm
                                         // Obtener IDs de componentes Monitor actualmente asignados a este periférico
                                         $currentMonitorIds = $record 
                                             ? $record->components()
-                                                ->where('components.componentable_type', 'App\Models\Monitor')
+                                                ->where('components.componentable_type', 'Monitor')
                                                 ->pluck('components.id')
                                                 ->toArray()
                                             : [];
@@ -92,7 +92,7 @@ class PeripheralForm
                                         // Obtener todos los componentes Monitor operativos que:
                                         // 1. No están asignados a ningún peripheral
                                         // 2. O están asignados a ESTE peripheral
-                                        $availableMonitors = Component::where('componentable_type', 'App\Models\Monitor')
+                                        $availableMonitors = Component::where('componentable_type', 'Monitor')
                                             ->where('status', 'Operativo')
                                             ->where(function ($query) use ($currentMonitorIds) {
                                                 $query->whereDoesntHave('peripheral')
@@ -121,9 +121,9 @@ class PeripheralForm
                             Select::make('keyboard_component_id')
                                 ->label('Teclado')
                                 ->options(function ($record) {
-                                    $current = $record?->components->firstWhere('componentable_type', 'App\Models\Keyboard');
+                                    $current = $record?->components->firstWhere('componentable_type', 'Keyboard');
                                     
-                                    $available = Component::where('componentable_type', 'App\Models\Keyboard')
+                                    $available = Component::where('componentable_type', 'Keyboard')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
@@ -144,9 +144,9 @@ class PeripheralForm
                             Select::make('mouse_component_id')
                                 ->label('Mouse')
                                 ->options(function ($record) {
-                                    $current = $record?->components->firstWhere('componentable_type', 'App\Models\Mouse');
+                                    $current = $record?->components->firstWhere('componentable_type', 'Mouse');
                                     
-                                    $available = Component::where('componentable_type', 'App\Models\Mouse')
+                                    $available = Component::where('componentable_type', 'Mouse')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
@@ -167,9 +167,9 @@ class PeripheralForm
                             Select::make('audio_device_component_id')
                                 ->label('Dispositivo de Audio')
                                 ->options(function ($record) {
-                                    $current = $record?->components->firstWhere('componentable_type', 'App\Models\AudioDevice');
+                                    $current = $record?->components->firstWhere('componentable_type', 'AudioDevice');
                                     
-                                    $available = Component::where('componentable_type', 'App\Models\AudioDevice')
+                                    $available = Component::where('componentable_type', 'AudioDevice')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
@@ -190,10 +190,10 @@ class PeripheralForm
                             Select::make('stabilizer_component_id')
                                 ->label('Estabilizador')
                                 ->options(function ($record) {
-                                    $current = $record?->components->firstWhere('componentable_type', 'App\Models\Stabilizer');
+                                    $current = $record?->components->firstWhere('componentable_type', 'Stabilizer');
                                     
                                     // Los estabilizadores pueden estar asignados a múltiples dispositivos
-                                    $available = Component::where('componentable_type', 'App\Models\Stabilizer')
+                                    $available = Component::where('componentable_type', 'Stabilizer')
                                         ->where('status', 'Operativo')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
@@ -213,9 +213,9 @@ class PeripheralForm
                             Select::make('splitter_component_id')
                                 ->label('Multicontacto/Splitter')
                                 ->options(function ($record) {
-                                    $current = $record?->components->firstWhere('componentable_type', 'App\Models\Splitter');
+                                    $current = $record?->components->firstWhere('componentable_type', 'Splitter');
                                     
-                                    $available = Component::where('componentable_type', 'App\Models\Splitter')
+                                    $available = Component::where('componentable_type', 'Splitter')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()

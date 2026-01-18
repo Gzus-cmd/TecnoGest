@@ -41,7 +41,7 @@ class PeripheralsTable
                     ->searchable()
                     ->default('Sin asignar')
                     ->badge()
-                    ->color(fn ($state) => $state === 'Sin asignar' ? 'gray' : 'success'),
+                    ->color(fn($state) => $state === 'Sin asignar' ? 'gray' : 'success'),
                 TextColumn::make('created_at')
                     ->label('Registrado')
                     ->dateTime()
@@ -67,27 +67,27 @@ class PeripheralsTable
                             return $query->whereNull('computer_id');
                         }
                     }),
-                    
+
             ])
             ->recordActions([
 
                 Action::make('verComponentes')
-                        ->label('Ver')
-                        ->icon('heroicon-o-eye')
-                        ->color('success')
-                        ->visible(fn () => auth()->user()?->can('PeripheralViewComponents'))
-                        ->modalHeading('Detalles del Periférico')
-                        ->modalWidth('6xl')
-                        ->modalSubmitAction(false)
-                        ->infolist(function ($record) {
+                    ->label('Ver')
+                    ->icon('heroicon-o-eye')
+                    ->color('success')
+                    ->visible(fn() => auth()->user()?->can('PeripheralViewComponents'))
+                    ->modalHeading('Detalles del Periférico')
+                    ->modalWidth('6xl')
+                    ->modalSubmitAction(false)
+                    ->infolist(function ($record) {
                         $record->load(['components.componentable', 'location', 'computer']);
-                        
-                        $keyboard = $record->components->firstWhere('componentable_type', 'App\Models\Keyboard');
-                        $mouse = $record->components->firstWhere('componentable_type', 'App\Models\Mouse');
-                        $audioDevice = $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice');
-                        $stabilizer = $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer');
-                        $splitter = $record->components->firstWhere('componentable_type', 'App\Models\Splitter');
-                        $monitors = $record->components->where('componentable_type', 'App\Models\Monitor');
+
+                        $keyboard = $record->components->firstWhere('componentable_type', 'Keyboard');
+                        $mouse = $record->components->firstWhere('componentable_type', 'Mouse');
+                        $audioDevice = $record->components->firstWhere('componentable_type', 'AudioDevice');
+                        $stabilizer = $record->components->firstWhere('componentable_type', 'Stabilizer');
+                        $splitter = $record->components->firstWhere('componentable_type', 'Splitter');
+                        $monitors = $record->components->where('componentable_type', 'Monitor');
 
                         return [
                             ViewEntry::make('info_header')
@@ -97,7 +97,7 @@ class PeripheralsTable
                                     'textColor' => 'white'
                                 ])
                                 ->columnSpanFull(),
-                            
+
                             Section::make()
                                 ->schema([
                                     TextEntry::make('code')
@@ -121,7 +121,7 @@ class PeripheralsTable
                                     'textColor' => 'white'
                                 ])
                                 ->columnSpanFull(),
-                            
+
                             Section::make()
                                 ->schema([
                                     TextEntry::make('monitors_info')
@@ -131,13 +131,16 @@ class PeripheralsTable
                                             return $monitors->map(function ($monitor, $index) {
                                                 $m = $monitor->componentable;
                                                 $num = $index + 1;
+                                                $brand = $m->brand ?? 'N/A';
+                                                $model = $m->model ?? 'N/A';
+                                                $screenSize = $m->screen_size ?? 'N/A';
                                                 return "<div style='margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #10b981;'>" .
-                                                       "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>Monitor #{$num}: {$m->brand} {$m->model}</div>" .
-                                                       "<div style='line-height: 1.6;'>" .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Tamaño:</span> <span style='color: #9ca3af;'>{$m->screen_size} pulgadas</span><br>" .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$monitor->serial}</span> | " .
-                                                       "<span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$monitor->status}</span>" .
-                                                       "</div></div>";
+                                                    "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>Monitor #{$num}: {$brand} {$model}</div>" .
+                                                    "<div style='line-height: 1.6;'>" .
+                                                    "<span style='font-weight: 400; color: #6b7280;'>Tamaño:</span> <span style='color: #9ca3af;'>{$screenSize} pulgadas</span><br>" .
+                                                    "<span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$monitor->serial}</span> | " .
+                                                    "<span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$monitor->status}</span>" .
+                                                    "</div></div>";
                                             })->join('');
                                         })
                                         ->html()
@@ -148,11 +151,13 @@ class PeripheralsTable
                                         ->state(function () use ($keyboard) {
                                             if (!$keyboard) return '<span style="color: #9ca3af;">No asignado</span>';
                                             $kb = $keyboard->componentable;
+                                            $brand = $kb->brand ?? 'N/A';
+                                            $model = $kb->model ?? 'N/A';
                                             return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$kb->brand} {$kb->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$keyboard->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$keyboard->status}</span></div>" .
-                                                   "</div>";
+                                                "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$brand} {$model}</div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$keyboard->serial}</span></div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$keyboard->status}</span></div>" .
+                                                "</div>";
                                         })
                                         ->html(),
 
@@ -161,11 +166,13 @@ class PeripheralsTable
                                         ->state(function () use ($mouse) {
                                             if (!$mouse) return '<span style="color: #9ca3af;">No asignado</span>';
                                             $m = $mouse->componentable;
+                                            $brand = $m->brand ?? 'N/A';
+                                            $model = $m->model ?? 'N/A';
                                             return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$m->brand} {$m->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$mouse->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$mouse->status}</span></div>" .
-                                                   "</div>";
+                                                "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$brand} {$model}</div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$mouse->serial}</span></div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$mouse->status}</span></div>" .
+                                                "</div>";
                                         })
                                         ->html(),
 
@@ -174,11 +181,13 @@ class PeripheralsTable
                                         ->state(function () use ($audioDevice) {
                                             if (!$audioDevice) return '<span style="color: #9ca3af;">No asignado</span>';
                                             $ad = $audioDevice->componentable;
+                                            $brand = $ad->brand ?? 'N/A';
+                                            $model = $ad->model ?? 'N/A';
                                             return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$ad->brand} {$ad->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$audioDevice->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$audioDevice->status}</span></div>" .
-                                                   "</div>";
+                                                "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$brand} {$model}</div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$audioDevice->serial}</span></div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$audioDevice->status}</span></div>" .
+                                                "</div>";
                                         })
                                         ->html(),
 
@@ -187,12 +196,15 @@ class PeripheralsTable
                                         ->state(function () use ($stabilizer) {
                                             if (!$stabilizer) return '<span style="color: #9ca3af;">No asignado</span>';
                                             $st = $stabilizer->componentable;
+                                            $brand = $st->brand ?? 'N/A';
+                                            $model = $st->model ?? 'N/A';
+                                            $power = $st->power ?? 'N/A';
                                             return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$st->brand} {$st->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Potencia:</span> <span style='color: #9ca3af;'>{$st->power} VA</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$stabilizer->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$stabilizer->status}</span></div>" .
-                                                   "</div>";
+                                                "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$brand} {$model}</div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Potencia:</span> <span style='color: #9ca3af;'>{$power} VA</span></div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$stabilizer->serial}</span></div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$stabilizer->status}</span></div>" .
+                                                "</div>";
                                         })
                                         ->html(),
 
@@ -201,12 +213,15 @@ class PeripheralsTable
                                         ->state(function () use ($splitter) {
                                             if (!$splitter) return '<span style="color: #9ca3af;">No asignado</span>';
                                             $sp = $splitter->componentable;
+                                            $brand = $sp->brand ?? 'N/A';
+                                            $model = $sp->model ?? 'N/A';
+                                            $outlets = $sp->outlets ?? 'N/A';
                                             return "<div style='line-height: 1.8;'>" .
-                                                   "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$sp->brand} {$sp->model}</div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Número de Tomas:</span> <span style='color: #9ca3af;'>{$sp->outlets}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$splitter->serial}</span></div>" .
-                                                   "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$splitter->status}</span></div>" .
-                                                   "</div>";
+                                                "<div style='font-weight: 700; color: #f3f4f6; margin-bottom: 8px; font-size: 1.05rem;'>{$brand} {$model}</div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Número de Tomas:</span> <span style='color: #9ca3af;'>{$outlets}</span></div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Serial:</span> <span style='color: #9ca3af;'>{$splitter->serial}</span></div>" .
+                                                "<div><span style='font-weight: 400; color: #6b7280;'>Estado:</span> <span style='color: #9ca3af;'>{$splitter->status}</span></div>" .
+                                                "</div>";
                                         })
                                         ->html(),
                                 ])
@@ -214,17 +229,17 @@ class PeripheralsTable
                         ];
                     }),
 
-                    Action::make('actualizarComponentes')
-                        ->label('Actualizar')
-                        ->icon('heroicon-o-cpu-chip')
-                        ->color('info')
-                        ->visible(fn () => auth()->user()?->can('PeripheralUpdateComponents'))
-                        ->modalHeading('Actualizar')
-                        ->modalDescription('Modifique los componentes del periférico')
-                        ->modalWidth('6xl')
-                        ->modalSubmitActionLabel('Guardar Cambios')
-                        ->modalCancelActionLabel('Cancelar')
-                        ->form([
+                Action::make('actualizarComponentes')
+                    ->label('Actualizar')
+                    ->icon('heroicon-o-cpu-chip')
+                    ->color('info')
+                    ->visible(fn() => auth()->user()?->can('PeripheralUpdateComponents'))
+                    ->modalHeading('Actualizar')
+                    ->modalDescription('Modifique los componentes del periférico')
+                    ->modalWidth('6xl')
+                    ->modalSubmitActionLabel('Guardar Cambios')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->form([
                         Repeater::make('monitors')
                             ->label('Monitores')
                             ->schema([
@@ -232,21 +247,24 @@ class PeripheralsTable
                                     ->label('Monitor')
                                     ->options(function ($record) {
                                         $currentMonitorIds = $record->components()
-                                            ->where('components.componentable_type', 'App\Models\Monitor')
+                                            ->where('components.componentable_type', 'Monitor')
                                             ->pluck('components.id')
                                             ->toArray();
-                                        
-                                        $availableMonitors = Component::where('componentable_type', 'App\Models\Monitor')
+
+                                        $availableMonitors = Component::where('componentable_type', 'Monitor')
                                             ->where('status', 'Operativo')
                                             ->where(function ($query) use ($currentMonitorIds) {
                                                 $query->whereDoesntHave('peripheral')
                                                     ->orWhereIn('id', $currentMonitorIds);
                                             })
                                             ->get();
-                                        
+
                                         return $availableMonitors->mapWithKeys(function ($component) use ($currentMonitorIds) {
                                             $monitor = $component->componentable;
-                                            $label = "{$monitor->brand} {$monitor->model} - {$monitor->screen_size}\" - Serial: {$component->serial}";
+                                            $brand = $monitor->brand ?? 'N/A';
+                                            $model = $monitor->model ?? 'N/A';
+                                            $screenSize = $monitor->screen_size ?? 'N/A';
+                                            $label = "{$brand} {$model} - {$screenSize}\" - Serial: {$component->serial}";
                                             if (in_array($component->id, $currentMonitorIds)) {
                                                 $label .= " (ACTUAL)";
                                             }
@@ -265,22 +283,26 @@ class PeripheralsTable
                             Select::make('keyboard_component_id')
                                 ->label('Teclado')
                                 ->options(function ($record) {
-                                    $current = $record->components->firstWhere('componentable_type', 'App\Models\Keyboard');
-                                    
-                                    $available = Component::where('componentable_type', 'App\Models\Keyboard')
+                                    $current = $record->components->firstWhere('componentable_type', 'Keyboard');
+
+                                    $available = Component::where('componentable_type', 'Keyboard')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
                                             $kb = $component->componentable;
-                                            return [$component->id => "{$kb->brand} {$kb->model} - Serial: {$component->serial}"];
+                                            $brand = $kb->brand ?? 'N/A';
+                                            $model = $kb->model ?? 'N/A';
+                                            return [$component->id => "{$brand} {$model} - Serial: {$component->serial}"];
                                         });
 
                                     if ($current) {
                                         $kb = $current->componentable;
-                                        $available->prepend("{$kb->brand} {$kb->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                        $brand = $kb->brand ?? 'N/A';
+                                        $model = $kb->model ?? 'N/A';
+                                        $available->prepend("{$brand} {$model} - Serial: {$current->serial} (ACTUAL)", $current->id);
                                     }
-                                    
+
                                     return $available;
                                 })
                                 ->searchable(),
@@ -288,20 +310,24 @@ class PeripheralsTable
                             Select::make('mouse_component_id')
                                 ->label('Mouse')
                                 ->options(function ($record) {
-                                    $current = $record->components->firstWhere('componentable_type', 'App\Models\Mouse');
-                                    
-                                    $available = Component::where('componentable_type', 'App\Models\Mouse')
+                                    $current = $record->components->firstWhere('componentable_type', 'Mouse');
+
+                                    $available = Component::where('componentable_type', 'Mouse')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
                                             $mouse = $component->componentable;
-                                            return [$component->id => "{$mouse->brand} {$mouse->model} - Serial: {$component->serial}"];
+                                            $brand = $mouse->brand ?? 'N/A';
+                                            $model = $mouse->model ?? 'N/A';
+                                            return [$component->id => "{$brand} {$model} - Serial: {$component->serial}"];
                                         });
 
                                     if ($current) {
                                         $mouse = $current->componentable;
-                                        $available->prepend("{$mouse->brand} {$mouse->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                        $brand = $mouse->brand ?? 'N/A';
+                                        $model = $mouse->model ?? 'N/A';
+                                        $available->prepend("{$brand} {$model} - Serial: {$current->serial} (ACTUAL)", $current->id);
                                     }
 
                                     return $available;
@@ -311,22 +337,26 @@ class PeripheralsTable
                             Select::make('audio_device_component_id')
                                 ->label('Dispositivo de Audio')
                                 ->options(function ($record) {
-                                    $current = $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice');
-                                    
-                                    $available = Component::where('componentable_type', 'App\Models\AudioDevice')
+                                    $current = $record->components->firstWhere('componentable_type', 'AudioDevice');
+
+                                    $available = Component::where('componentable_type', 'AudioDevice')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
                                             $audio = $component->componentable;
-                                            return [$component->id => "{$audio->brand} {$audio->model} - Serial: {$component->serial}"];
+                                            $brand = $audio->brand ?? 'N/A';
+                                            $model = $audio->model ?? 'N/A';
+                                            return [$component->id => "{$brand} {$model} - Serial: {$component->serial}"];
                                         });
-                                        
+
                                     if ($current) {
                                         $audio = $current->componentable;
-                                        $available->prepend("{$audio->brand} {$audio->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                        $brand = $audio->brand ?? 'N/A';
+                                        $model = $audio->model ?? 'N/A';
+                                        $available->prepend("{$brand} {$model} - Serial: {$current->serial} (ACTUAL)", $current->id);
                                     }
-                                    
+
                                     return $available;
                                 })
                                 ->searchable(),
@@ -334,19 +364,24 @@ class PeripheralsTable
                             Select::make('stabilizer_component_id')
                                 ->label('Estabilizador')
                                 ->options(function ($record) {
-                                    $current = $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer');
-                                    
-                                    $available = Component::where('componentable_type', 'App\Models\Stabilizer')
+                                    $current = $record->components->firstWhere('componentable_type', 'Stabilizer');
+
+                                    $available = Component::where('componentable_type', 'Stabilizer')
                                         ->where('status', 'Operativo')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
                                             $stab = $component->componentable;
-                                            return [$component->id => "{$stab->brand} {$stab->model} - {$stab->power}VA - Serial: {$component->serial}"];
+                                            $brand = $stab->brand ?? 'N/A';
+                                            $model = $stab->model ?? 'N/A';
+                                            $power = $stab->power ?? 'N/A';
+                                            return [$component->id => "{$brand} {$model} - {$power}VA - Serial: {$component->serial}"];
                                         });
 
                                     if ($current) {
                                         $stab = $current->componentable;
-                                        $available->prepend("{$stab->brand} {$stab->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                        $brand = $stab->brand ?? 'N/A';
+                                        $model = $stab->model ?? 'N/A';
+                                        $available->prepend("{$brand} {$model} - Serial: {$current->serial} (ACTUAL)", $current->id);
                                     }
 
                                     return $available;
@@ -356,20 +391,25 @@ class PeripheralsTable
                             Select::make('splitter_component_id')
                                 ->label('Multicontacto/Splitter')
                                 ->options(function ($record) {
-                                    $current = $record->components->firstWhere('componentable_type', 'App\Models\Splitter');
-                                    
-                                    $available = Component::where('componentable_type', 'App\Models\Splitter')
+                                    $current = $record->components->firstWhere('componentable_type', 'Splitter');
+
+                                    $available = Component::where('componentable_type', 'Splitter')
                                         ->where('status', 'Operativo')
                                         ->whereDoesntHave('peripheral')
                                         ->get()
                                         ->mapWithKeys(function ($component) {
                                             $split = $component->componentable;
-                                            return [$component->id => "{$split->brand} {$split->model} - {$split->outlets} tomas - Serial: {$component->serial}"];
+                                            $brand = $split->brand ?? 'N/A';
+                                            $model = $split->model ?? 'N/A';
+                                            $outlets = $split->outlets ?? 'N/A';
+                                            return [$component->id => "{$brand} {$model} - {$outlets} tomas - Serial: {$component->serial}"];
                                         });
 
                                     if ($current) {
                                         $split = $current->componentable;
-                                        $available->prepend("{$split->brand} {$split->model} - Serial: {$current->serial} (ACTUAL)", $current->id);
+                                        $brand = $split->brand ?? 'N/A';
+                                        $model = $split->model ?? 'N/A';
+                                        $available->prepend("{$brand} {$model} - Serial: {$current->serial} (ACTUAL)", $current->id);
                                     }
 
                                     return $available;
@@ -379,13 +419,13 @@ class PeripheralsTable
                     ])
                     ->fillForm(function ($record): array {
                         return [
-                            'keyboard_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Keyboard')?->id,
-                            'mouse_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Mouse')?->id,
-                            'audio_device_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice')?->id,
-                            'stabilizer_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer')?->id,
-                            'splitter_component_id' => $record->components->firstWhere('componentable_type', 'App\Models\Splitter')?->id,
+                            'keyboard_component_id' => $record->components->firstWhere('componentable_type', 'Keyboard')?->id,
+                            'mouse_component_id' => $record->components->firstWhere('componentable_type', 'Mouse')?->id,
+                            'audio_device_component_id' => $record->components->firstWhere('componentable_type', 'AudioDevice')?->id,
+                            'stabilizer_component_id' => $record->components->firstWhere('componentable_type', 'Stabilizer')?->id,
+                            'splitter_component_id' => $record->components->firstWhere('componentable_type', 'Splitter')?->id,
                             'monitors' => $record->components
-                                ->where('componentable_type', 'App\Models\Monitor')
+                                ->where('componentable_type', 'Monitor')
                                 ->map(fn($c) => ['component_id' => $c->id])
                                 ->toArray(),
                         ];
@@ -402,12 +442,12 @@ class PeripheralsTable
                             ];
 
                             $currentComponents = [
-                                'keyboard' => $record->components->firstWhere('componentable_type', 'App\Models\Keyboard')?->id,
-                                'mouse' => $record->components->firstWhere('componentable_type', 'App\Models\Mouse')?->id,
-                                'audio_device' => $record->components->firstWhere('componentable_type', 'App\Models\AudioDevice')?->id,
-                                'stabilizer' => $record->components->firstWhere('componentable_type', 'App\Models\Stabilizer')?->id,
-                                'splitter' => $record->components->firstWhere('componentable_type', 'App\Models\Splitter')?->id,
-                                'monitors' => $record->components->where('componentable_type', 'App\Models\Monitor')->pluck('id')->toArray(),
+                                'keyboard' => $record->components->firstWhere('componentable_type', 'Keyboard')?->id,
+                                'mouse' => $record->components->firstWhere('componentable_type', 'Mouse')?->id,
+                                'audio_device' => $record->components->firstWhere('componentable_type', 'AudioDevice')?->id,
+                                'stabilizer' => $record->components->firstWhere('componentable_type', 'Stabilizer')?->id,
+                                'splitter' => $record->components->firstWhere('componentable_type', 'Splitter')?->id,
+                                'monitors' => $record->components->where('componentable_type', 'Monitor')->pluck('id')->toArray(),
                             ];
 
                             $componentsToRemove = [];
@@ -415,7 +455,7 @@ class PeripheralsTable
                             foreach (['keyboard', 'mouse', 'audio_device', 'stabilizer', 'splitter'] as $type) {
                                 $currentId = $currentComponents[$type];
                                 $newId = $componentData[$type];
-                                
+
                                 if ($currentId && $currentId != $newId) {
                                     $componentsToRemove[] = $currentId;
                                 }
@@ -479,37 +519,38 @@ class PeripheralsTable
                             ->send();
                     }),
 
-                    Action::make('desmantelar')
-                        ->label('Desmantelar')
-                        ->icon('heroicon-o-wrench-screwdriver')
-                        ->color('danger')
-                        ->requiresConfirmation()
-                        ->modalHeading('Desmantelar Periférico')
-                        ->modalDescription(fn ($record) => "¿Está seguro de desmantelar el periférico {$record->code}? Todos los componentes vigentes serán removidos.")
-                        ->modalSubmitActionLabel('Sí, desmantelar')
-                        ->modalCancelActionLabel('Cancelar')
-                        ->visible(fn ($record) => 
-                            auth()->user()?->can('PeripheralDismantle') && 
+                Action::make('desmantelar')
+                    ->label('Desmantelar')
+                    ->icon('heroicon-o-wrench-screwdriver')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Desmantelar Periférico')
+                    ->modalDescription(fn($record) => "¿Está seguro de desmantelar el periférico {$record->code}? Todos los componentes vigentes serán removidos.")
+                    ->modalSubmitActionLabel('Sí, desmantelar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->visible(
+                        fn($record) =>
+                        auth()->user()?->can('PeripheralDismantle') &&
                             $record->computer_id === null
-                        )
-                        ->action(function ($record) {
-                            DB::transaction(function () use ($record) {
-                                DB::table('componentables')
-                                    ->where('componentable_type', 'App\\Models\\Peripheral')
-                                    ->where('componentable_id', $record->id)
-                                    ->where('status', 'Vigente')
-                                    ->update([
-                                        'status' => 'Removido',
-                                        'updated_at' => now()
-                                    ]);
-                            });
-                            
-                            Notification::make()
-                                ->title('Periférico desmantelado')
-                                ->success()
-                                ->body("El periférico {$record->code} ha sido desmantelado exitosamente.")
-                                ->send();
-                        }),
+                    )
+                    ->action(function ($record) {
+                        DB::transaction(function () use ($record) {
+                            DB::table('componentables')
+                                ->where('componentable_type', 'App\\Models\\Peripheral')
+                                ->where('componentable_id', $record->id)
+                                ->where('status', 'Vigente')
+                                ->update([
+                                    'status' => 'Removido',
+                                    'updated_at' => now()
+                                ]);
+                        });
+
+                        Notification::make()
+                            ->title('Periférico desmantelado')
+                            ->success()
+                            ->body("El periférico {$record->code} ha sido desmantelado exitosamente.")
+                            ->send();
+                    }),
 
                 ActionGroup::make([
                     EditAction::make()

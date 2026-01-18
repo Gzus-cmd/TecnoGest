@@ -26,13 +26,13 @@ class EditPeripheral extends EditRecord
         // Cargar componentes actuales
         $peripheral = $this->record;
         
-        $data['keyboard_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\Keyboard')?->id;
-        $data['mouse_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\Mouse')?->id;
-        $data['audio_device_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\AudioDevice')?->id;
-        $data['stabilizer_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\Stabilizer')?->id;
-        $data['splitter_component_id'] = $peripheral->components->firstWhere('componentable_type', 'App\Models\Splitter')?->id;
+        $data['keyboard_component_id'] = $peripheral->components->firstWhere('componentable_type', 'Keyboard')?->id;
+        $data['mouse_component_id'] = $peripheral->components->firstWhere('componentable_type', 'Mouse')?->id;
+        $data['audio_device_component_id'] = $peripheral->components->firstWhere('componentable_type', 'AudioDevice')?->id;
+        $data['stabilizer_component_id'] = $peripheral->components->firstWhere('componentable_type', 'Stabilizer')?->id;
+        $data['splitter_component_id'] = $peripheral->components->firstWhere('componentable_type', 'Splitter')?->id;
         $data['monitors'] = $peripheral->components
-            ->where('componentable_type', 'App\Models\Monitor')
+            ->where('componentable_type', 'Monitor')
             ->map(fn($c) => ['component_id' => $c->id])
             ->toArray();
 
@@ -69,12 +69,12 @@ class EditPeripheral extends EditRecord
         $componentData = $this->componentData;
 
         $currentComponents = [
-            'keyboard' => $peripheral->components->firstWhere('componentable_type', 'App\Models\Keyboard')?->id,
-            'mouse' => $peripheral->components->firstWhere('componentable_type', 'App\Models\Mouse')?->id,
-            'audio_device' => $peripheral->components->firstWhere('componentable_type', 'App\Models\AudioDevice')?->id,
-            'stabilizer' => $peripheral->components->firstWhere('componentable_type', 'App\Models\Stabilizer')?->id,
-            'splitter' => $peripheral->components->firstWhere('componentable_type', 'App\Models\Splitter')?->id,
-            'monitors' => $peripheral->components->where('componentable_type', 'App\Models\Monitor')->pluck('id')->toArray(),
+            'keyboard' => $peripheral->components->firstWhere('componentable_type', 'Keyboard')?->id,
+            'mouse' => $peripheral->components->firstWhere('componentable_type', 'Mouse')?->id,
+            'audio_device' => $peripheral->components->firstWhere('componentable_type', 'AudioDevice')?->id,
+            'stabilizer' => $peripheral->components->firstWhere('componentable_type', 'Stabilizer')?->id,
+            'splitter' => $peripheral->components->firstWhere('componentable_type', 'Splitter')?->id,
+            'monitors' => $peripheral->components->where('componentable_type', 'Monitor')->pluck('id')->toArray(),
         ];
 
         $componentsToRemove = [];
