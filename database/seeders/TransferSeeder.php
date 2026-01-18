@@ -17,10 +17,11 @@ class TransferSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::first();
+        $users = User::all();
+        $mainUser = $users->first();
         $locations = Location::where('is_workshop', false)->get();
-        
-        if (!$user) {
+
+        if (!$mainUser) {
             $this->command->warn('⚠️ No hay usuarios. Ejecuta DatabaseSeeder primero.');
             return;
         }
@@ -30,10 +31,10 @@ class TransferSeeder extends Seeder
             return;
         }
 
-        // Obtener dispositivos activos (cargando relación location para evitar lazy loading)
-        $computers = Computer::with('location')->whereIn('status', ['Activo', 'Inactivo'])->limit(4)->get();
-        $printers = Printer::with('location')->whereIn('status', ['Activo', 'Inactivo'])->limit(2)->get();
-        $projectors = Projector::with('location')->whereIn('status', ['Activo', 'Inactivo'])->limit(2)->get();
+        // Obtener más dispositivos activos (cargando relación location para evitar lazy loading)
+        $computers = Computer::with('location')->whereIn('status', ['Activo', 'Inactivo'])->limit(10)->get();
+        $printers = Printer::with('location')->whereIn('status', ['Activo', 'Inactivo'])->limit(6)->get();
+        $projectors = Projector::with('location')->whereIn('status', ['Activo', 'Inactivo'])->limit(4)->get();
 
         $statuses = ['Pendiente', 'En Proceso', 'Finalizado'];
         $reasons = [
@@ -42,8 +43,10 @@ class TransferSeeder extends Seeder
             'Solicitud de usuario',
             'Redistribución de equipamiento',
             'Mantenimiento programado',
+            'Reorganización de oficinas',
+            'Actualización de infraestructura',
         ];
-        
+
         $transfersCreated = 0;
 
         // Crear traslados para computadoras
@@ -52,16 +55,20 @@ class TransferSeeder extends Seeder
             $origin = $computer->location;
             $destiny = $locations->where('id', '!=', $origin->id)->random();
 
+            $createdAt = now()->subDays(rand(1, 90));
+            $registeredBy = $users->random();
+
             Transfer::create([
                 'deviceable_type' => Computer::class,
                 'deviceable_id' => $computer->id,
-                'registered_by' => $user->id,
+                'registered_by' => $registeredBy->id,
                 'origin_id' => $origin->id,
                 'destiny_id' => $destiny->id,
-                'date' => now()->subDays(rand(1, 15))->toDateString(),
+                'date' => $createdAt->toDateString(),
                 'reason' => collect($reasons)->random(),
                 'status' => $status,
-                'created_at' => now()->subDays(rand(1, 20)),
+                'created_at' => $createdAt,
+                'updated_at' => $status === 'Finalizado' ? $createdAt->addDays(rand(1, 3)) : $createdAt,
             ]);
 
             // Si el traslado está finalizado, actualizar la ubicación del dispositivo
@@ -78,16 +85,20 @@ class TransferSeeder extends Seeder
             $origin = $printer->location;
             $destiny = $locations->where('id', '!=', $origin->id)->random();
 
+            $createdAt = now()->subDays(rand(1, 90));
+            $registeredBy = $users->random();
+
             Transfer::create([
                 'deviceable_type' => Printer::class,
                 'deviceable_id' => $printer->id,
-                'registered_by' => $user->id,
+                'registered_by' => $registeredBy->id,
                 'origin_id' => $origin->id,
                 'destiny_id' => $destiny->id,
-                'date' => now()->subDays(rand(1, 15))->toDateString(),
+                'date' => $createdAt->toDateString(),
                 'reason' => collect($reasons)->random(),
                 'status' => $status,
-                'created_at' => now()->subDays(rand(1, 20)),
+                'created_at' => $createdAt,
+                'updated_at' => $status === 'Finalizado' ? $createdAt->addDays(rand(1, 3)) : $createdAt,
             ]);
 
             if ($status === 'Finalizado') {
@@ -103,16 +114,20 @@ class TransferSeeder extends Seeder
             $origin = $projector->location;
             $destiny = $locations->where('id', '!=', $origin->id)->random();
 
+            $createdAt = now()->subDays(rand(1, 90));
+            $registeredBy = $users->random();
+
             Transfer::create([
                 'deviceable_type' => Projector::class,
                 'deviceable_id' => $projector->id,
-                'registered_by' => $user->id,
+                'registered_by' => $registeredBy->id,
                 'origin_id' => $origin->id,
                 'destiny_id' => $destiny->id,
-                'date' => now()->subDays(rand(1, 15))->toDateString(),
+                'date' => $createdAt->toDateString(),
                 'reason' => collect($reasons)->random(),
                 'status' => $status,
-                'created_at' => now()->subDays(rand(1, 20)),
+                'created_at' => $createdAt,
+                'updated_at' => $status === 'Finalizado' ? $createdAt->addDays(rand(1, 3)) : $createdAt,
             ]);
 
             if ($status === 'Finalizado') {
@@ -125,5 +140,6 @@ class TransferSeeder extends Seeder
         $this->command->info("✅ Traslados creados: {$transfersCreated}");
         $this->command->info("   📦 Estados: Pendiente, En Proceso, Finalizado");
         $this->command->info("   🚚 Entre " . $locations->count() . " ubicaciones diferentes");
+        $this->command->info("   👥 Registrados por diferentes usuarios");
     }
 }
