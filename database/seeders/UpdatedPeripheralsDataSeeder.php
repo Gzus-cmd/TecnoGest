@@ -169,12 +169,12 @@ class UpdatedPeripheralsDataSeeder extends Seeder
         }
 
         // Obtener componentes disponibles para crear nuevas computadoras
-        $availableCPUs = Component::where('componentable_type', \App\Models\CPU::class)
+        $availableCPUs = Component::where('componentable_type', CPU::class)
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
             
-        $availableMBs = Component::where('componentable_type', \App\Models\Motherboard::class)
+        $availableMBs = Component::where('componentable_type', Motherboard::class)
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
@@ -270,17 +270,17 @@ class UpdatedPeripheralsDataSeeder extends Seeder
         $os = \App\Models\OS::inRandomOrder()->first();
         
         // Obtener componentes disponibles
-        $availableCPUs = Component::where('componentable_type', \App\Models\CPU::class)
+        $availableCPUs = Component::where('componentable_type', CPU::class)
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
             
-        $availableMBs = Component::where('componentable_type', \App\Models\Motherboard::class)
+        $availableMBs = Component::where('componentable_type', Motherboard::class)
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
             
-        $availableRAMs = Component::where('componentable_type', \App\Models\RAM::class)
+        $availableRAMs = Component::where('componentable_type', RAM::class)
             ->where('status', 'Operativo')
             ->whereDoesntHave('computers')
             ->get();
