@@ -29,10 +29,10 @@ class DeviceInfoSheet implements FromCollection, WithTitle, WithHeadings, WithSt
         $data->push(['Campo', 'Valor']);
         $data->push(['Serial', $this->device->serial]);
         $data->push(['Estado', $this->device->status]);
-        
+
         if ($this->type === 'computer') {
             $this->device->load(['os', 'location', 'components.componentable']);
-            
+
             $data->push(['Ubicación', $this->device->location ? $this->device->location->pavilion . ' - ' . $this->device->location->name : 'No asignada']);
             $data->push(['Dirección IP', $this->device->ip_address ?? 'No asignada']);
             $data->push(['', '']);
@@ -43,13 +43,12 @@ class DeviceInfoSheet implements FromCollection, WithTitle, WithHeadings, WithSt
             $data->push(['Licencia', $this->device->os->license_key ?? 'N/A']);
             $data->push(['', '']);
             $data->push(['COMPONENTES ACTUALES', '']);
-            
+
             // Agregar componentes
             $this->addComputerComponents($data);
-            
         } elseif ($this->type === 'printer') {
             $this->device->load(['printerModel', 'location', 'components.componentable']);
-            
+
             $data->push(['Ubicación', $this->device->location ? $this->device->location->pavilion . ' - ' . $this->device->location->name : 'No asignada']);
             $data->push(['Dirección IP', $this->device->ip_address ?? 'No asignada']);
             $data->push(['', '']);
@@ -59,13 +58,12 @@ class DeviceInfoSheet implements FromCollection, WithTitle, WithHeadings, WithSt
             $data->push(['Tipo', $this->device->printerModel->type ?? 'N/A']);
             $data->push(['', '']);
             $data->push(['COMPONENTES ACTUALES', '']);
-            
+
             // Agregar componentes de impresora (si aplica)
             $this->addPrinterComponents($data);
-            
         } elseif ($this->type === 'projector') {
             $this->device->load(['projectorModel', 'location', 'components.componentable']);
-            
+
             $data->push(['Ubicación', $this->device->location ? $this->device->location->pavilion . ' - ' . $this->device->location->name : 'No asignada']);
             $data->push(['', '']);
             $data->push(['MODELO DE PROYECTOR', '']);
@@ -75,7 +73,7 @@ class DeviceInfoSheet implements FromCollection, WithTitle, WithHeadings, WithSt
             $data->push(['Brillo (Lúmenes)', $this->device->projectorModel->brightness ?? 'N/A']);
             $data->push(['', '']);
             $data->push(['COMPONENTES ACTUALES', '']);
-            
+
             // Agregar componentes de proyector (si aplica)
             $this->addProjectorComponents($data);
         }
@@ -103,7 +101,7 @@ class DeviceInfoSheet implements FromCollection, WithTitle, WithHeadings, WithSt
         }
 
         // RAMs
-        $rams = $this->device->components->where('componentable_type', 'App\Models\RAM');
+        $rams = $this->device->components->where('componentable_type', 'RAM');
         foreach ($rams as $index => $ram) {
             if ($ram->componentable) {
                 $r = $ram->componentable;
@@ -112,7 +110,7 @@ class DeviceInfoSheet implements FromCollection, WithTitle, WithHeadings, WithSt
         }
 
         // ROMs
-        $roms = $this->device->components->where('componentable_type', 'App\Models\ROM');
+        $roms = $this->device->components->where('componentable_type', 'ROM');
         foreach ($roms as $index => $rom) {
             if ($rom->componentable) {
                 $r = $rom->componentable;
@@ -120,8 +118,8 @@ class DeviceInfoSheet implements FromCollection, WithTitle, WithHeadings, WithSt
             }
         }
 
-        // Monitores
-        $monitors = $this->device->components->where('componentable_type', 'App\Models\Monitor');
+        // Monitors
+        $monitors = $this->device->components->where('componentable_type', 'Monitor');
         foreach ($monitors as $index => $monitor) {
             if ($monitor->componentable) {
                 $m = $monitor->componentable;

@@ -24,29 +24,29 @@ class DeviceTransfersHistorySheet implements FromCollection, WithTitle, WithHead
 
     public function collection()
     {
-        $deviceClass = match($this->type) {
-            'computer' => 'App\Models\Computer',
-            'printer' => 'App\Models\Printer',
-            'projector' => 'App\Models\Projector',
+        $deviceClass = match ($this->type) {
+            'computer' => 'Computer',
+            'printer' => 'Printer',
+            'projector' => 'Projector',
         };
 
         return Transfer::where('deviceable_type', $deviceClass)
             ->where('deviceable_id', $this->device->id)
-            ->with(['user', 'origin', 'destiny', 'registeredBy', 'updatedBy'])
+            ->with(['origin', 'destiny', 'registeredBy', 'updatedBy'])
             ->orderBy('date', 'desc')
             ->get();
     }
 
     public function map($transfer): array
     {
-        $origin = $transfer->origin ? 
-            ($transfer->origin->pavilion ? "{$transfer->origin->pavilion} - " : '') . $transfer->origin->name 
+        $origin = $transfer->origin ?
+            ($transfer->origin->pavilion ? "{$transfer->origin->pavilion} - " : '') . $transfer->origin->name
             : '—';
-        
-        $destiny = $transfer->destiny ? 
-            ($transfer->destiny->pavilion ? "{$transfer->destiny->pavilion} - " : '') . $transfer->destiny->name 
+
+        $destiny = $transfer->destiny ?
+            ($transfer->destiny->pavilion ? "{$transfer->destiny->pavilion} - " : '') . $transfer->destiny->name
             : '—';
-        
+
         $status = $this->device->location_id === $transfer->destiny_id ? 'Completado' : 'Pendiente';
 
         return [

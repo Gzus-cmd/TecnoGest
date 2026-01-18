@@ -47,24 +47,24 @@ class ComponentHistoryExport implements FromCollection, WithHeadings, WithMappin
     {
         // Obtener detalles del componente
         $componentType = match ($record->componentable_type) {
-            'App\Models\Motherboard' => 'Placa Base',
-            'App\Models\CPU' => 'Procesador',
-            'App\Models\GPU' => 'Tarjeta Gráfica',
-            'App\Models\RAM' => 'Memoria RAM',
-            'App\Models\ROM' => 'Almacenamiento',
-            'App\Models\Monitor' => 'Monitor',
-            'App\Models\Keyboard' => 'Teclado',
-            'App\Models\Mouse' => 'Mouse',
-            'App\Models\NetworkAdapter' => 'Adaptador de Red',
-            'App\Models\PowerSupply' => 'Fuente de Poder',
-            'App\Models\TowerCase' => 'Gabinete',
-            'App\Models\AudioDevice' => 'Dispositivo de Audio',
-            'App\Models\Stabilizer' => 'Estabilizador',
-            'App\Models\Splitter' => 'Splitter',
-            'App\Models\SparePart' => 'Repuesto',
+            'Motherboard' => 'Placa Base',
+            'CPU' => 'Procesador',
+            'GPU' => 'Tarjeta Gráfica',
+            'RAM' => 'Memoria RAM',
+            'ROM' => 'Almacenamiento',
+            'Monitor' => 'Monitor',
+            'Keyboard' => 'Teclado',
+            'Mouse' => 'Mouse',
+            'NetworkAdapter' => 'Adaptador de Red',
+            'PowerSupply' => 'Fuente de Poder',
+            'TowerCase' => 'Gabinete',
+            'AudioDevice' => 'Dispositivo de Audio',
+            'Stabilizer' => 'Estabilizador',
+            'Splitter' => 'Splitter',
+            'SparePart' => 'Repuesto',
             default => 'Otro',
         };
-        
+
         $brand = 'N/A';
         $model = 'N/A';
         try {
@@ -76,12 +76,12 @@ class ComponentHistoryExport implements FromCollection, WithHeadings, WithMappin
         } catch (\Exception $e) {
             Log::warning("Error al exportar historial de componente {$record->id}: " . $e->getMessage());
         }
-        
+
         // Obtener detalles del dispositivo
         $deviceType = 'N/A';
         $deviceSerial = 'N/A';
         $location = 'N/A';
-        
+
         try {
             if (str_contains($record->device_type, 'Computer')) {
                 $device = \App\Models\Computer::with('location')->find($record->device_id);
@@ -93,7 +93,7 @@ class ComponentHistoryExport implements FromCollection, WithHeadings, WithMappin
                 $device = \App\Models\Projector::with('location')->find($record->device_id);
                 $deviceType = 'Proyector';
             }
-            
+
             if (isset($device) && $device) {
                 $deviceSerial = $device->serial;
                 $location = $device->location->name ?? 'Sin ubicación';
@@ -101,7 +101,7 @@ class ComponentHistoryExport implements FromCollection, WithHeadings, WithMappin
         } catch (\Exception $e) {
             Log::warning("Error al exportar dispositivo del historial: " . $e->getMessage());
         }
-        
+
         return [
             $componentType,
             $brand,

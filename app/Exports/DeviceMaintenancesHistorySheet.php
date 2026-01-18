@@ -24,10 +24,10 @@ class DeviceMaintenancesHistorySheet implements FromCollection, WithTitle, WithH
 
     public function collection()
     {
-        $deviceClass = match($this->type) {
-            'computer' => 'App\Models\Computer',
-            'printer' => 'App\Models\Printer',
-            'projector' => 'App\Models\Projector',
+        $deviceClass = match ($this->type) {
+            'computer' => 'Computer',
+            'printer' => 'Printer',
+            'projector' => 'Projector',
         };
 
         return Maintenance::where('deviceable_type', $deviceClass)
