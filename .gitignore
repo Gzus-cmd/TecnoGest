@@ -17,6 +17,8 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/app/backups/*.sql
+/storage/app/temp_import.sql
 /vendor
 /docs
 Homestead.json

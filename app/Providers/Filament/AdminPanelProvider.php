@@ -29,7 +29,7 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')
+            ->path('')
             ->login()
             ->colors([
                 'primary' => Color::Blue,
@@ -41,7 +41,7 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-            ->widgets([            
+            ->widgets([
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -60,8 +60,8 @@ class AdminPanelProvider extends PanelProvider
                 ->navigationGroup('Administración')                  // string|Closure|null
                 ->navigationSort(100)                        // int|Closure|null
                 ->navigationBadgeColor('success')           // string|array|Closure|null
-                
-                    
+
+
             ])
             ->authMiddleware([
                 Authenticate::class,
