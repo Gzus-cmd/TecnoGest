@@ -9,9 +9,9 @@ use App\Models\Printer;
 use App\Models\Projector;
 use BackedEnum;
 use Filament\Resources\Resource;
+use Illuminate\Support\Facades\Auth;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
@@ -65,44 +65,51 @@ class ComponentHistoryResource extends Resource
             ->columns([
                 TextColumn::make('componentable_type')
                     ->label('Tipo / Serial')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'App\Models\Motherboard' => 'Placa Base',
-                        'App\Models\CPU' => 'Procesador',
-                        'App\Models\GPU' => 'Tarjeta Gráfica',
-                        'App\Models\RAM' => 'Memoria RAM',
-                        'App\Models\ROM' => 'Almacenamiento',
-                        'App\Models\Monitor' => 'Monitor',
-                        'App\Models\Keyboard' => 'Teclado',
-                        'App\Models\Mouse' => 'Mouse',
-                        'App\Models\NetworkAdapter' => 'Adaptador de Red',
-                        'App\Models\PowerSupply' => 'Fuente de Poder',
-                        'App\Models\TowerCase' => 'Gabinete',
-                        'App\Models\AudioDevice' => 'Dispositivo de Audio',
-                        'App\Models\Stabilizer' => 'Estabilizador',
-                        'App\Models\Splitter' => 'Splitter',
-                        'App\Models\SparePart' => 'Repuesto',
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'Motherboard' => 'Placa Base',
+                        'CPU' => 'Procesador',
+                        'GPU' => 'Tarjeta Gráfica',
+                        'RAM' => 'Memoria RAM',
+                        'ROM' => 'Almacenamiento',
+                        'Monitor' => 'Monitor',
+                        'Keyboard' => 'Teclado',
+                        'Mouse' => 'Mouse',
+                        'NetworkAdapter' => 'Adaptador de Red',
+                        'PowerSupply' => 'Fuente de Poder',
+                        'TowerCase' => 'Gabinete',
+                        'AudioDevice' => 'Dispositivo de Audio',
+                        'Stabilizer' => 'Estabilizador',
+                        'Splitter' => 'Splitter',
+                        'SparePart' => 'Repuesto',
                         default => 'Otro',
                     })
-                    ->description(fn ($record) => "🔢 " . ($record->serial ?? 'N/A'))
+                    ->description(fn($record) => "🔢 " . ($record->serial ?? 'N/A'))
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->where(function ($q) use ($search) {
                             $q->where('components.componentable_type', 'like', "%{$search}%")
-                              ->orWhere('components.serial', 'like', "%{$search}%");
+                                ->orWhere('components.serial', 'like', "%{$search}%");
                         });
                     })
                     ->sortable(),
-                    
+
                 TextColumn::make('componentable.brand')
                     ->label('Marca / Modelo')
                     ->getStateUsing(function ($record) {
                         $type = $record->componentable_type;
                         $id = $record->componentable_id;
                         if (!$type || !$id) return 'N/A';
-                        
+
                         try {
+                            // Asegurar que el tipo tenga el namespace completo
+                            if (!str_starts_with($type, 'App\\Models\\')) {
+                                $type = 'App\\Models\\' . $type;
+                            }
+
+                            if (!class_exists($type)) return 'N/A';
+
                             $component = $type::find($id);
                             if (!$component) return 'N/A';
-                            
+
                             return $component->brand ?? 'N/A';
                         } catch (\Exception $e) {
                             return 'N/A';
@@ -112,26 +119,33 @@ class ComponentHistoryResource extends Resource
                         $type = $record->componentable_type;
                         $id = $record->componentable_id;
                         if (!$type || !$id) return '';
-                        
+
                         try {
+                            // Asegurar que el tipo tenga el namespace completo
+                            if (!str_starts_with($type, 'App\\Models\\')) {
+                                $type = 'App\\Models\\' . $type;
+                            }
+
+                            if (!class_exists($type)) return '';
+
                             $component = $type::find($id);
                             if (!$component) return '';
-                            
+
                             return "🏷️ " . ($component->model ?? 'N/A');
                         } catch (\Exception $e) {
                             return '';
                         }
                     })
                     ->wrap(),
-                    
+
                 TextColumn::make('device_info')
                     ->label('Asignado a')
                     ->getStateUsing(function ($record) {
                         $deviceType = $record->device_type ?? null;
                         $deviceId = $record->device_id ?? null;
-                        
+
                         if (!$deviceType || !$deviceId) return 'N/A';
-                        
+
                         try {
                             // Buscar el dispositivo
                             if (str_contains($deviceType, 'Computer')) {
@@ -146,25 +160,25 @@ class ComponentHistoryResource extends Resource
                             } else {
                                 return 'Dispositivo Desconocido';
                             }
-                            
+
                             if (!$device) return 'Dispositivo no encontrado';
-                            
+
                             $location = $device->location->name ?? 'Sin ubicación';
                             return "{$type}: {$device->serial} ({$location})";
                         } catch (\Exception $e) {
                             return 'Error al cargar dispositivo';
                         }
                     }),
-                    
+
                 TextColumn::make('assigned_at')
                     ->label('Fecha de Asignación')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-                    
+
                 TextColumn::make('assignment_status')
                     ->label('Estado')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'Vigente' => 'success',
                         'Removido' => 'warning',
                         'Desmantelado' => 'danger',
@@ -176,21 +190,21 @@ class ComponentHistoryResource extends Resource
                 SelectFilter::make('componentable_type')
                     ->label('Tipo de Componente')
                     ->options([
-                        'App\Models\Motherboard' => 'Placa Base',
-                        'App\Models\CPU' => 'Procesador',
-                        'App\Models\GPU' => 'Tarjeta Gráfica',
-                        'App\Models\RAM' => 'Memoria RAM',
-                        'App\Models\ROM' => 'Almacenamiento',
-                        'App\Models\Monitor' => 'Monitor',
-                        'App\Models\Keyboard' => 'Teclado',
-                        'App\Models\Mouse' => 'Mouse',
-                        'App\Models\NetworkAdapter' => 'Adaptador de Red',
-                        'App\Models\PowerSupply' => 'Fuente de Poder',
-                        'App\Models\TowerCase' => 'Gabinete',
-                        'App\Models\AudioDevice' => 'Dispositivo de Audio',
-                        'App\Models\Stabilizer' => 'Estabilizador',
-                        'App\Models\Splitter' => 'Splitter',
-                        'App\Models\SparePart' => 'Repuesto',
+                        'Motherboard' => 'Placa Base',
+                        'CPU' => 'Procesador',
+                        'GPU' => 'Tarjeta Gráfica',
+                        'RAM' => 'Memoria RAM',
+                        'ROM' => 'Almacenamiento',
+                        'Monitor' => 'Monitor',
+                        'Keyboard' => 'Teclado',
+                        'Mouse' => 'Mouse',
+                        'NetworkAdapter' => 'Adaptador de Red',
+                        'PowerSupply' => 'Fuente de Poder',
+                        'TowerCase' => 'Gabinete',
+                        'AudioDevice' => 'Dispositivo de Audio',
+                        'Stabilizer' => 'Estabilizador',
+                        'Splitter' => 'Splitter',
+                        'SparePart' => 'Repuesto',
                     ])
                     ->query(function (Builder $query, array $data) {
                         if (!empty($data['values'])) {
@@ -202,7 +216,7 @@ class ComponentHistoryResource extends Resource
                     ->multiple()
                     ->searchable()
                     ->preload(),
-                    
+
                 SelectFilter::make('assignment_status')
                     ->label('Estado de Asignación')
                     ->options([
@@ -218,7 +232,7 @@ class ComponentHistoryResource extends Resource
                     ->multiple()
                     ->searchable()
                     ->preload(),
-                    
+
                 SelectFilter::make('device_type')
                     ->label('Tipo de Dispositivo')
                     ->options([
@@ -233,33 +247,33 @@ class ComponentHistoryResource extends Resource
                     })
                     ->searchable()
                     ->preload(),
-                    
+
                 SelectFilter::make('device_id')
                     ->label('Dispositivo Específico')
                     ->options(function () {
                         $devices = [];
-                        
+
                         // Obtener todas las computadoras
                         $computers = Computer::with('location')->get();
                         foreach ($computers as $computer) {
                             $location = $computer->location->name ?? 'Sin ubicación';
                             $devices["Computer-{$computer->id}"] = "PC: {$computer->serial} ({$location})";
                         }
-                        
+
                         // Obtener todas las impresoras
                         $printers = Printer::with('location')->get();
                         foreach ($printers as $printer) {
                             $location = $printer->location->name ?? 'Sin ubicación';
                             $devices["Printer-{$printer->id}"] = "Impresora: {$printer->serial} ({$location})";
                         }
-                        
+
                         // Obtener todos los proyectores
                         $projectors = Projector::with('location')->get();
                         foreach ($projectors as $projector) {
                             $location = $projector->location->name ?? 'Sin ubicación';
                             $devices["Projector-{$projector->id}"] = "Proyector: {$projector->serial} ({$location})";
                         }
-                        
+
                         return $devices;
                     })
                     ->query(function (Builder $query, array $data) {
@@ -270,13 +284,13 @@ class ComponentHistoryResource extends Resource
                                 $type = $parts[0];
                                 $id = $parts[1];
                                 $query->where('componentables.componentable_type', 'like', "%{$type}%")
-                                      ->where('componentables.componentable_id', $id);
+                                    ->where('componentables.componentable_id', $id);
                             }
                         }
                     })
                     ->searchable()
                     ->preload(),
-                    
+
                 Filter::make('assigned_at')
                     ->form([
                         DatePicker::make('assigned_from')
@@ -288,11 +302,11 @@ class ComponentHistoryResource extends Resource
                         return $query
                             ->when(
                                 $data['assigned_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('componentables.assigned_at', '>=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('componentables.assigned_at', '>=', $date),
                             )
                             ->when(
                                 $data['assigned_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('componentables.assigned_at', '<=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('componentables.assigned_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
@@ -305,7 +319,7 @@ class ComponentHistoryResource extends Resource
                         }
                         return $indicators;
                     }),
-                    
+
                 Filter::make('removed_at')
                     ->form([
                         DatePicker::make('removed_from')
@@ -317,15 +331,15 @@ class ComponentHistoryResource extends Resource
                         return $query
                             ->when(
                                 $data['removed_from'] || $data['removed_until'],
-                                fn (Builder $query): Builder => $query->where('componentables.status', '!=', 'Vigente'),
+                                fn(Builder $query): Builder => $query->where('componentables.status', '!=', 'Vigente'),
                             )
                             ->when(
                                 $data['removed_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('componentables.updated_at', '>=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('componentables.updated_at', '>=', $date),
                             )
                             ->when(
                                 $data['removed_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('componentables.updated_at', '<=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('componentables.updated_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
@@ -343,9 +357,10 @@ class ComponentHistoryResource extends Resource
             ->recordActions([])
             ->toolbarActions([
                 \Filament\Actions\Action::make('exportExcel')
-                    ->visible(fn () => 
+                    ->visible(
+                        fn() =>
                         \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin' &&
-                        auth()->user()?->can('ComponentHistoryExport')
+                            Auth::user()?->can('ComponentHistoryExport')
                     )
                     ->label('Exportar Excel')
                     ->icon('heroicon-o-document-arrow-down')
@@ -359,11 +374,12 @@ class ComponentHistoryResource extends Resource
                             \Maatwebsite\Excel\Excel::XLSX
                         );
                     }),
-                
+
                 \Filament\Actions\Action::make('exportCsv')
-                    ->visible(fn () => 
+                    ->visible(
+                        fn() =>
                         \Filament\Facades\Filament::getCurrentPanel()->getId() === 'admin' &&
-                        auth()->user()?->can('ComponentHistoryExport')
+                            Auth::user()?->can('ComponentHistoryExport')
                     )
                     ->label('Exportar CSV')
                     ->icon('heroicon-o-document-text')
@@ -386,7 +402,7 @@ class ComponentHistoryResource extends Resource
             'index' => ManageComponentHistories::route('/'),
         ];
     }
-    
+
     public static function canCreate(): bool
     {
         return false;

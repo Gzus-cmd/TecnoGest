@@ -37,13 +37,13 @@ class ListComponents extends ListRecords
                 ->icon(Heroicon::ComputerDesktop)
                 ->modifyQueryUsing(fn (Builder $query) => $query
                     ->whereIn('componentable_type', [
-                        \App\Models\CPU::class,
-                        \App\Models\Motherboard::class,
-                        \App\Models\GPU::class,
-                        \App\Models\RAM::class,
-                        \App\Models\ROM::class,
-                        \App\Models\PowerSupply::class,
-                        \App\Models\TowerCase::class,
+                        'CPU',
+                        'Motherboard',
+                        'GPU',
+                        'RAM',
+                        'ROM',
+                        'PowerSupply',
+                        'TowerCase',
                     ])
                     ->where('status', '!=', 'Retirado')
                 ),
@@ -52,12 +52,12 @@ class ListComponents extends ListRecords
                 ->icon(Heroicon::CursorArrowRays)
                 ->modifyQueryUsing(fn (Builder $query) => $query
                 ->whereIn('componentable_type', [
-                        \App\Models\Monitor::class,
-                        \App\Models\Keyboard::class,
-                        \App\Models\Mouse::class,
-                        \App\Models\Splitter::class,
-                        \App\Models\AudioDevice::class,
-                        \App\Models\NetworkAdapter::class,
+                        'Monitor',
+                        'Keyboard',
+                        'Mouse',
+                        'Splitter',
+                        'AudioDevice',
+                        'NetworkAdapter',
                     ])
                 ->where('status', '!=', 'Retirado')
             ),
@@ -65,7 +65,7 @@ class ListComponents extends ListRecords
             'printers' => Tab::make('Impresoras')
                 ->icon(Heroicon::Printer)
                 ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->where('componentable_type', \App\Models\SparePart::class)
+                    ->where('componentable_type', 'SparePart')
                     ->whereExists(function ($q) {
                         $q->select(DB::raw(1))
                           ->from('spare_parts')
@@ -78,7 +78,7 @@ class ListComponents extends ListRecords
             'projectors' => Tab::make('Proyectores')
                 ->icon(Heroicon::VideoCamera)
                 ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->where('componentable_type', \App\Models\SparePart::class)
+                    ->where('componentable_type', 'SparePart')
                     ->whereExists(function ($q) {
                         $q->select(DB::raw(1))
                           ->from('spare_parts')
@@ -93,31 +93,31 @@ class ListComponents extends ListRecords
                 ->modifyQueryUsing(fn (Builder $query) => $query
                     ->where(function ($q) {
                         $q->whereNotIn('componentable_type', [
-                            \App\Models\CPU::class,
-                            \App\Models\Motherboard::class,
-                            \App\Models\GPU::class,
-                            \App\Models\RAM::class,
-                            \App\Models\ROM::class,
-                            \App\Models\PowerSupply::class,
-                            \App\Models\NetworkAdapter::class,
-                            \App\Models\TowerCase::class,
-                            \App\Models\Monitor::class,
-                            \App\Models\Keyboard::class,
-                            \App\Models\Mouse::class,
-                            \App\Models\Splitter::class,
-                            \App\Models\AudioDevice::class,
+                            'CPU',
+                            'Motherboard',
+                            'GPU',
+                            'RAM',
+                            'ROM',
+                            'PowerSupply',
+                            'NetworkAdapter',
+                            'TowerCase',
+                            'Monitor',
+                            'Keyboard',
+                            'Mouse',
+                            'Splitter',
+                            'AudioDevice',
                         ])
                         ->where(function ($subQ) {
-                            $subQ->where('componentable_type', '!=', \App\Models\SparePart::class)
+                            $subQ->where('componentable_type', '!=', 'SparePart')
                                 ->orWhereExists(function ($spareQ) {
                                     $spareQ->select(DB::raw(1))
                                           ->from('spare_parts')
                                           ->whereColumn('spare_parts.id', 'components.componentable_id')
                                           ->whereNotIn('spare_parts.type', [
-                                              'Cabezal de Impresión', 
-                                              'Rodillo', 
+                                              'Cabezal de Impresión',
+                                              'Rodillo',
                                               'Fusor',
-                                              'Lámpara de Proyector', 
+                                              'Lámpara de Proyector',
                                               'Lente'
                                           ]);
                                 });
