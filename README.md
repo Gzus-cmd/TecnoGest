@@ -104,7 +104,7 @@ docker run --rm \
 ./vendor/bin/sail npm run build
 ```
 
-**Accede en:** http://localhost
+**Accede en:** <http://localhost>
 
 ### Opción B: Instalación Manual (Sin Docker)
 
@@ -133,7 +133,7 @@ npm run build
 php artisan serve
 ```
 
-**Accede en:** http://localhost:8000
+**Accede en:** <http://localhost:8000>
 
 ### Credenciales de Acceso
 
@@ -301,20 +301,99 @@ Para desplegar en producción, usa las ramas especializadas:
 
 | Método | Rama | Instrucciones |
 |--------|------|---------------|
+| **Docker Hub** | — | Imagen pre-construida lista para usar |
 | **Railway** | [`deploy`](https://github.com/Gzus-cmd/TecnoGest/tree/deploy) | Deploy automático con Nixpacks |
-| **Docker** | [`docker`](https://github.com/Gzus-cmd/TecnoGest/tree/docker) | MySQL, PostgreSQL, SQLite, Standalone |
+| **Docker (build)** | [`docker`](https://github.com/Gzus-cmd/TecnoGest/tree/docker) | Construir imagen + MySQL, PostgreSQL, SQLite |
 | **VPS/Manual** | `main` (esta) | Instalar con Nginx + PHP-FPM |
 
-### Deploy rápido con Docker (desde main)
+### Deploy con Docker Hub (Recomendado - Sin compilar)
+
+[![Docker Hub](https://img.shields.io/badge/Docker%20Hub-gzus07%2Ftecnogest-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/gzus07/tecnogest)
+
+La imagen pre-construida está disponible en Docker Hub — no necesitas clonar el repositorio ni compilar nada.
 
 ```bash
-# Opción 1: Usar la rama docker directamente
-git clone -b docker https://github.com/Gzus-cmd/TecnoGest.git
-cd TecnoGest
-docker compose -f docker-compose.mysql.yml up -d
-docker exec tecnogest-app php artisan migrate --seed
+# 1. Descargar y ejecutar directamente
+docker run -d \
+    --name tecnogest \
+    -p 8080:80 \
+    -e APP_KEY=base64:$(openssl rand -base64 32) \
+    -e DB_CONNECTION=sqlite \
+    -e DB_DATABASE=/var/www/html/database/tecnogest.sqlite \
+    -e AUTO_MIGRATE=true \
+    -e AUTO_SEED=true \
+    gzus07/tecnogest:latest
 
-# Opción 2: Usar Sail desde main (desarrollo)
+# 2. Acceder
+# URL: http://localhost:8080
+# Email: admin@tecnogest.com
+# Password: password
+```
+
+<details>
+<summary><b>🐳 Docker Hub con MySQL (Producción)</b></summary>
+
+Crea un archivo `docker-compose.yml`:
+
+```yaml
+services:
+  app:
+    image: gzus07/tecnogest:latest
+    container_name: tecnogest-app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      APP_KEY: ${APP_KEY:-base64:GENERA_UNA_KEY}
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: tecnogest
+      DB_USERNAME: tecnogest
+      DB_PASSWORD: ${DB_PASSWORD:-tecnogest2024}
+      AUTO_MIGRATE: "true"
+      AUTO_SEED: "true"
+      SEEDER_CLASS: DemoSeeder
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: tecnogest-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: tecnogest
+      MYSQL_USER: tecnogest
+      MYSQL_PASSWORD: ${DB_PASSWORD:-tecnogest2024}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root2024}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
+```
+
+```bash
+docker compose up -d
+# URL: http://localhost:8080
+```
+
+</details>
+
+> **Tags disponibles:** `latest`, `1.0.0`  
+> **Docker Hub:** [hub.docker.com/r/gzus07/tecnogest](https://hub.docker.com/r/gzus07/tecnogest)
+
+### Deploy rápido con Sail (desde main)
+
+```bash
 git clone https://github.com/Gzus-cmd/TecnoGest.git
 cd TecnoGest && cp .env.example .env
 docker run --rm -v "$(pwd):/opt" -w /opt \
@@ -432,4 +511,3 @@ Desarrollado por [Gzus-cmd](https://github.com/Gzus-cmd)
 ⭐ Si este proyecto te fue útil, considera darle una estrella en GitHub
 
 </div>
-
