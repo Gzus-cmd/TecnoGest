@@ -8,187 +8,323 @@
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![Filament](https://img.shields.io/badge/Filament-4.x-FFAA00?style=for-the-badge&logo=filament&logoColor=white)](https://filamentphp.com)
 [![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
-[![Railway](https://img.shields.io/badge/Railway-Deploy-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)](https://railway.app)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com)
 
-**Rama `deploy` — Optimizada para despliegue en Railway**
+**Sistema integral para administrar computadoras, impresoras, proyectores, componentes, mantenimientos y más.**
 
-[Desplegar en Railway](#-despliegue-en-railway) • [Variables de Entorno](#-variables-de-entorno) • [Optimizaciones](#-optimizaciones)
+[Inicio Rápido](#-inicio-rápido) • [Características](#-características) • [Instalación](#-instalación) • [Despliegue](#-despliegue)
 
 </div>
 
 ---
 
-> **Nota:** Esta rama contiene optimizaciones específicas para Railway (Nixpacks). Para desarrollo local, usa la rama [`main`](https://github.com/Gzus-cmd/TecnoGest/tree/main). Para despliegue con Docker self-hosted, usa la rama [`docker`](https://github.com/Gzus-cmd/TecnoGest/tree/docker).
+## ✨ Características
+
+<table>
+<tr>
+<td width="50%">
+
+### 🖥️ Gestión de Dispositivos
+
+- Computadoras con componentes
+- Impresoras y modelos
+- Proyectores
+- Periféricos completos
+
+</td>
+<td width="50%">
+
+### 📦 Inventario
+
+- CPUs, GPUs, RAM, ROM
+- Placas base y periféricos
+- Repuestos (cabezales, lámparas)
+- Historial de asignaciones
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🔧 Mantenimiento
+
+- Preventivo y correctivo
+- Registro de técnicos
+- Control de taller
+- Seguimiento de estados
+
+</td>
+<td width="50%">
+
+### 📊 Reportes y Más
+
+- Exportación a Excel
+- Transferencias entre ubicaciones
+- Gestión de proveedores
+- Organización por pabellones
+
+</td>
+</tr>
+</table>
 
 ---
 
-## 📑 Tabla de Contenidos
+## 🚀 Inicio Rápido
 
-- [🚀 Despliegue en Railway](#-despliegue-en-railway)
-- [⚙️ Variables de Entorno](#%EF%B8%8F-variables-de-entorno)
-- [⚡ Optimizaciones Incluidas](#-optimizaciones-incluidas)
-- [🔧 Mantenimiento](#-mantenimiento)
-- [🛡️ Seguridad](#%EF%B8%8F-seguridad)
-- [📚 Tecnologías](#-tecnologías)
+> **¿Primera vez?** Sigue estos pasos para tener el sistema funcionando en minutos.
 
----
+### Opción A: Con Laravel Sail (Docker)
 
-## 🚀 Despliegue en Railway
+**Prerequisitos:** Docker Desktop o Docker Engine + Docker Compose, Git
 
-### Paso 1: Fork y Conectar
+```bash
+# 1. Clonar el proyecto
+git clone https://github.com/Gzus-cmd/TecnoGest.git
+cd TecnoGest
 
-1. Haz **Fork** de este repositorio
-2. En [Railway](https://railway.app), crea un nuevo proyecto
-3. Selecciona **"Deploy from GitHub repo"**
-4. Conecta tu fork y selecciona la rama `deploy`
+# 2. Copiar archivo de entorno
+cp .env.example .env
 
-### Paso 2: Agregar Base de Datos
+# 3. Instalar dependencias con contenedor temporal
+docker run --rm \
+    -v "$(pwd):/opt" \
+    -w /opt \
+    laravelsail/php84-composer:latest \
+    bash -c "composer install && php artisan sail:install --with=mysql"
 
-1. En Railway, haz clic en **"+ New"** → **"Database"** → **"MySQL"**
-2. Railway proporcionará automáticamente la variable `DATABASE_URL`
+# 4. Iniciar contenedores
+./vendor/bin/sail up -d
 
-### Paso 3: Configurar Variables de Entorno
+# 5. Configurar base de datos
+./vendor/bin/sail artisan key:generate
+./vendor/bin/sail artisan migrate --seed
 
-En la pestaña **Variables** de tu servicio, agrega:
-
-```env
-APP_NAME=TecnoGest
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://tu-app.up.railway.app
-APP_KEY=   # Se genera automáticamente o usa: php artisan key:generate --show
-
-DB_CONNECTION=mysql
-MYSQL_URL=${DATABASE_URL}   # Railway lo provee automáticamente
-
-CACHE_STORE=database
-SESSION_DRIVER=database
-QUEUE_CONNECTION=database
-
-LOG_CHANNEL=stack
-LOG_LEVEL=warning
+# 6. Compilar assets
+./vendor/bin/sail npm install
+./vendor/bin/sail npm run build
 ```
 
-### Paso 4: Desplegar
+**Accede en:** http://localhost
 
-Railway detectará automáticamente el `railway.json` y:
+### Opción B: Instalación Manual (Sin Docker)
 
-1. **Build:** Instala dependencias, compila assets, cachea configuraciones
-2. **Start:** Ejecuta migraciones y levanta el servidor
+**Prerequisitos:** PHP 8.4+, Composer 2.x, Node.js 20+, MySQL 8.0+ o SQLite
 
-### 🎉 ¡Listo
+```bash
+# 1. Clonar e instalar
+git clone https://github.com/Gzus-cmd/TecnoGest.git
+cd TecnoGest
+cp .env.example .env
 
-Accede en la URL que Railway te asigne.
+# 2. Instalar dependencias
+composer install
+npm install
 
-**Credenciales por defecto:**
+# 3. Configurar
+php artisan key:generate
+# Editar .env con tus credenciales de BD si usas MySQL
+# Por defecto usa SQLite (no requiere configuración)
+
+# 4. Base de datos y assets
+php artisan migrate --seed
+npm run build
+
+# 5. Iniciar servidor
+php artisan serve
+```
+
+**Accede en:** http://localhost:8000
+
+### Credenciales de Acceso
 
 ```
 Email:    admin@tecnogest.com
 Password: password
 ```
 
-> ⚠️ **Cambia la contraseña del admin inmediatamente en producción.**
-
 ---
 
-## ⚙️ Variables de Entorno
+## ⚙️ Instalación Detallada
 
-| Variable | Descripción | Valor por Defecto |
-|----------|-------------|-------------------|
-| `APP_NAME` | Nombre de la aplicación | `TecnoGest` |
-| `APP_ENV` | Entorno de ejecución | `production` |
-| `APP_DEBUG` | Modo debug | `false` |
-| `APP_URL` | URL pública de la app | - |
-| `APP_KEY` | Clave de encriptación | Auto-generada |
-| `DB_CONNECTION` | Driver de BD | `mysql` |
-| `MYSQL_URL` | URL de conexión MySQL | Provista por Railway |
-| `CACHE_STORE` | Driver de caché | `database` |
-| `SESSION_DRIVER` | Driver de sesiones | `database` |
-| `LOG_LEVEL` | Nivel de logging | `warning` |
-
----
-
-## ⚡ Optimizaciones Incluidas
-
-Esta rama incluye las siguientes optimizaciones respecto a `main`:
-
-### Rendimiento
-
-- **OPcache** configurado para producción (sin validación de timestamps)
-- **Config/Route/View cache** generados en build time
-- **Filament optimize** y **icons cache** pre-compilados
-- **Composer autoloader** optimizado con classmap authoritative
-- **Eloquent strict mode** activado en producción (previene N+1)
-- **MorphMap** configurado para reducir tamaño de datos polimórficos
-
-### Build (railway.json)
-
-```json
-{
-    "build": {
-        "buildCommand": "composer install --no-dev --optimize-autoloader && npm ci && npm run build && php artisan filament:optimize && php artisan icons:cache && php artisan config:cache && php artisan route:cache && php artisan view:cache"
-    },
-    "deploy": {
-        "startCommand": "php artisan migrate --force && php artisan db:seed --class=DemoSeeder --force 2>/dev/null; php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
-    }
-}
-```
-
-### Seguridad
-
-- `APP_DEBUG=false` enforced
-- Headers de seguridad (X-Frame-Options, X-Content-Type-Options, etc.)
-- Trust proxies configurado para Railway (`*`)
-- CSRF protection activa
-- Lazy loading prevention en producción
-
----
-
-## 🔧 Mantenimiento
-
-### Ver Logs
-
-En el dashboard de Railway → tu servicio → pestaña **Logs**
-
-### Ejecutar Comandos Artisan
+<details>
+<summary><b>🐧 Instalar PHP 8.4 y Extensiones (Ubuntu/Debian)</b></summary>
 
 ```bash
-# En Railway CLI
-railway run php artisan migrate:status
-railway run php artisan tinker
-railway run php artisan cache:clear
+sudo apt install -y software-properties-common
+sudo add-apt-repository ppa:ondrej/php -y
+sudo apt update
+
+sudo apt install -y \
+    php8.4-cli php8.4-fpm php8.4-common \
+    php8.4-mysql php8.4-sqlite3 \
+    php8.4-zip php8.4-gd php8.4-mbstring \
+    php8.4-curl php8.4-xml php8.4-bcmath php8.4-intl
 ```
 
-### Resetear Base de Datos (Demo)
+</details>
+
+<details>
+<summary><b>📦 Instalar Composer</b></summary>
 
 ```bash
-railway run php artisan migrate:fresh --seed --seeder=DemoSeeder --force
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
 ```
 
-### Actualizar
+</details>
 
-1. Haz push a la rama `deploy` de tu fork
-2. Railway desplegará automáticamente
+<details>
+<summary><b>🟢 Instalar Node.js 20</b></summary>
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+</details>
+
+<details>
+<summary><b>🗄️ Configurar MySQL (opcional, SQLite por defecto)</b></summary>
+
+```bash
+sudo apt install -y mysql-server
+sudo mysql_secure_installation
+```
+
+```sql
+CREATE DATABASE tecnogest CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'tecnogest'@'localhost' IDENTIFIED BY 'password_seguro';
+GRANT ALL PRIVILEGES ON tecnogest.* TO 'tecnogest'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Editar `.env`:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=tecnogest
+DB_USERNAME=tecnogest
+DB_PASSWORD=password_seguro
+```
+
+</details>
 
 ---
 
-## 🛡️ Seguridad
+## 🔧 Comandos Útiles
 
-### En Producción
+### Desarrollo
 
-1. **Cambia la contraseña del admin:**
+```bash
+# Modo desarrollo con hot-reload (servidor + vite + queue)
+composer dev
 
-   ```bash
-   railway run php artisan tinker
-   >>> User::where('email', 'admin@tecnogest.com')->first()->update(['password' => Hash::make('TuPasswordSegura')]);
-   ```
+# Setup completo desde cero
+composer setup:dev
 
-2. **Verifica las variables:**
-   - `APP_DEBUG=false`
-   - `APP_ENV=production`
-   - `APP_KEY` generada y única
+# Resetear base de datos
+composer fresh
 
-3. **Railway provee HTTPS automáticamente** — no requiere configuración adicional.
+# Limpiar cachés
+composer clear
+```
+
+### Laravel Sail (Docker)
+
+```bash
+# Crear alias (recomendado)
+echo "alias sail='./vendor/bin/sail'" >> ~/.bashrc && source ~/.bashrc
+
+# Gestión de contenedores
+sail up -d          # Iniciar
+sail down           # Detener
+sail restart        # Reiniciar
+sail logs -f        # Ver logs
+
+# Artisan
+sail artisan migrate
+sail artisan tinker
+sail artisan test
+
+# Base de datos
+sail mysql          # Consola MySQL
+sail artisan migrate:fresh --seed   # Resetear BD
+```
+
+### Sin Docker
+
+```bash
+php artisan serve           # Iniciar servidor
+php artisan migrate         # Migraciones
+php artisan db:seed         # Datos de prueba
+php artisan test            # Tests
+php artisan optimize:clear  # Limpiar cachés
+npm run dev                 # Vite dev server
+npm run build               # Compilar assets
+```
+
+---
+
+## 🎯 Uso del Sistema
+
+### Funcionalidades Principales
+
+| Módulo | Acceso | Descripción |
+|--------|--------|-------------|
+| **Computadoras** | Dispositivos → Computadoras | Gestión completa con componentes |
+| **Impresoras** | Dispositivos → Impresoras | Modelos, repuestos, cabezales |
+| **Proyectores** | Dispositivos → Proyectores | Lámparas, mantenimiento |
+| **Periféricos** | Dispositivos → Periféricos | Teclados, ratones, monitores, etc. |
+| **Mantenimientos** | Operaciones → Mantenimientos | Preventivo y correctivo |
+| **Transferencias** | Operaciones → Transferencias | Movimiento entre ubicaciones |
+| **Componentes** | Inventario → Componentes | CPU, GPU, RAM, ROM, etc. |
+| **Exportar** | Botón en cada tabla | Reportes Excel completos |
+| **Backup** | Administración → Backup | Respaldo de base de datos |
+
+### Datos de Prueba Incluidos
+
+- 3 Usuarios (admin, soporte, viewer)
+- 10 Computadoras con componentes
+- 8 Impresoras distribuidas
+- 6 Proyectores
+- 218+ Componentes de hardware
+- 122+ Repuestos
+- 35 Ubicaciones en 7 pabellones
+
+---
+
+## 🚀 Despliegue
+
+Para desplegar en producción, usa las ramas especializadas:
+
+| Método | Rama | Instrucciones |
+|--------|------|---------------|
+| **Railway** | [`deploy`](https://github.com/Gzus-cmd/TecnoGest/tree/deploy) | Deploy automático con Nixpacks |
+| **Docker** | [`docker`](https://github.com/Gzus-cmd/TecnoGest/tree/docker) | MySQL, PostgreSQL, SQLite, Standalone |
+| **VPS/Manual** | `main` (esta) | Instalar con Nginx + PHP-FPM |
+
+### Deploy rápido con Docker (desde main)
+
+```bash
+# Opción 1: Usar la rama docker directamente
+git clone -b docker https://github.com/Gzus-cmd/TecnoGest.git
+cd TecnoGest
+docker compose -f docker-compose.mysql.yml up -d
+docker exec tecnogest-app php artisan migrate --seed
+
+# Opción 2: Usar Sail desde main (desarrollo)
+git clone https://github.com/Gzus-cmd/TecnoGest.git
+cd TecnoGest && cp .env.example .env
+docker run --rm -v "$(pwd):/opt" -w /opt \
+    laravelsail/php84-composer:latest \
+    bash -c "composer install && php artisan sail:install --with=mysql"
+./vendor/bin/sail up -d
+./vendor/bin/sail artisan key:generate
+./vendor/bin/sail artisan migrate --seed
+./vendor/bin/sail npm install && ./vendor/bin/sail npm run build
+```
 
 ---
 
@@ -199,20 +335,91 @@ railway run php artisan migrate:fresh --seed --seeder=DemoSeeder --force
 | **Backend** | Laravel | 12.x |
 | **Admin Panel** | Filament PHP | 4.x |
 | **Lenguaje** | PHP | 8.4 |
-| **Base de Datos** | MySQL | 8.0+ |
+| **Base de Datos** | MySQL / SQLite | 8.0+ / 3.x |
 | **Frontend** | Livewire + TailwindCSS | 3.x / 4.x |
 | **Build Tool** | Vite | 7.x |
-| **Deploy** | Railway (Nixpacks) | - |
+| **Contenedores** | Docker / Sail | 20.10+ |
+
+### Estructura del Proyecto
+
+```
+TecnoGest/
+├── app/
+│   ├── Console/Commands/   # Comandos artisan personalizados
+│   ├── Constants/           # Constantes (Status, DeviceTypes)
+│   ├── Exports/             # Exportaciones a Excel
+│   ├── Filament/            # Panel administrativo
+│   │   ├── Resources/       # CRUD de dispositivos
+│   │   ├── Pages/           # Dashboard, Backup, Perfil
+│   │   └── Widgets/         # Gráficos y estadísticas
+│   ├── Http/Middleware/     # CacheAssets, CacheUserPermissions
+│   ├── Models/              # 25+ modelos Eloquent
+│   ├── Policies/            # Políticas de autorización
+│   └── Providers/           # Service providers
+├── database/
+│   ├── migrations/          # Migraciones consolidadas
+│   └── seeders/             # 18+ seeders con datos de prueba
+├── resources/views/         # Vistas Blade
+├── compose.yaml             # Docker Sail (desarrollo)
+└── .env.example             # Variables de entorno
+```
 
 ---
 
-## 🌿 Otras Ramas
+## 🐛 Solución de Problemas
 
-| Rama | Propósito |
-|------|-----------|
-| [`main`](https://github.com/Gzus-cmd/TecnoGest/tree/main) | Desarrollo local (sin optimizaciones de producción) |
-| [`docker`](https://github.com/Gzus-cmd/TecnoGest/tree/docker) | Despliegue con Docker multi-variante (MySQL, PostgreSQL, SQLite) |
-| `deploy` (esta) | Despliegue optimizado para Railway |
+<details>
+<summary><b>Puerto 80 ya en uso</b></summary>
+
+```bash
+sudo systemctl stop apache2 && sudo systemctl disable apache2
+./vendor/bin/sail up -d
+```
+
+</details>
+
+<details>
+<summary><b>Problemas de permisos</b></summary>
+
+```bash
+# Con Docker
+./vendor/bin/sail shell
+chmod -R 775 storage bootstrap/cache
+
+# Sin Docker
+sudo chown -R $USER:www-data storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
+```
+
+</details>
+
+<details>
+<summary><b>Página en blanco o error 500</b></summary>
+
+```bash
+php artisan optimize:clear
+php artisan config:cache
+php artisan storage:link
+```
+
+</details>
+
+<details>
+<summary><b>Base de datos no conecta</b></summary>
+
+Con Docker (Sail) usa `DB_HOST=mysql`. Sin Docker usa `DB_HOST=127.0.0.1`.
+
+</details>
+
+---
+
+## 🤝 Contribuir
+
+1. Fork el proyecto
+2. Crea tu rama (`git checkout -b feature/MiCaracteristica`)
+3. Commit tus cambios (`git commit -m 'feat: agregar MiCaracterística'`)
+4. Push a la rama (`git push origin feature/MiCaracteristica`)
+5. Abre un Pull Request
 
 ---
 
@@ -223,4 +430,6 @@ railway run php artisan migrate:fresh --seed --seeder=DemoSeeder --force
 Desarrollado por [Gzus-cmd](https://github.com/Gzus-cmd)
 
 ⭐ Si este proyecto te fue útil, considera darle una estrella en GitHub
+
+</div>
 
