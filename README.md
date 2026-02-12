@@ -35,6 +35,93 @@
 
 ## 🚀 Inicio Rápido
 
+### Desde Docker Hub (Sin compilar)
+
+[![Docker Hub](https://img.shields.io/badge/Docker%20Hub-gzus07%2Ftecnogest-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/gzus07/tecnogest)
+
+La forma más rápida — no necesitas clonar el repositorio:
+
+```bash
+# 1. Ejecutar directamente desde Docker Hub
+docker run -d \
+    --name tecnogest \
+    -p 8080:80 \
+    -e APP_KEY=base64:$(openssl rand -base64 32) \
+    -e DB_CONNECTION=sqlite \
+    -e DB_DATABASE=/var/www/html/database/tecnogest.sqlite \
+    -e AUTO_MIGRATE=true \
+    -e AUTO_SEED=true \
+    gzus07/tecnogest:latest
+
+# 2. Acceder
+# URL: http://localhost:8080
+# Email: admin@tecnogest.com
+# Password: password
+```
+
+> **Tags disponibles:** `latest`, `1.0.0` — [ver en Docker Hub](https://hub.docker.com/r/gzus07/tecnogest/tags)
+
+<details>
+<summary><b>🐳 Docker Hub + MySQL (Producción)</b></summary>
+
+Crea un archivo `docker-compose.yml` en cualquier carpeta:
+
+```yaml
+services:
+  app:
+    image: gzus07/tecnogest:latest
+    container_name: tecnogest-app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      APP_KEY: ${APP_KEY:-base64:GENERA_UNA_KEY}
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: tecnogest
+      DB_USERNAME: tecnogest
+      DB_PASSWORD: ${DB_PASSWORD:-tecnogest2024}
+      AUTO_MIGRATE: "true"
+      AUTO_SEED: "true"
+      SEEDER_CLASS: DemoSeeder
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: tecnogest-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: tecnogest
+      MYSQL_USER: tecnogest
+      MYSQL_PASSWORD: ${DB_PASSWORD:-tecnogest2024}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root2024}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
+```
+
+```bash
+docker compose up -d
+```
+
+</details>
+
+---
+
+### Desde el Repositorio (Construir imagen)
+
 ### Con MySQL (Recomendado)
 
 ```bash
@@ -42,8 +129,8 @@
 git clone -b docker https://github.com/Gzus-cmd/TecnoGest.git
 cd TecnoGest
 
-# 2. Iniciar contenedores
-docker compose -f docker-compose.mysql.yml up -d
+# 2. Iniciar contenedores (construye la imagen)
+docker compose -f docker-compose.mysql.yml up -d --build
 
 # 3. Ejecutar migraciones (primera vez)
 docker exec tecnogest-app php artisan migrate --seed
@@ -57,7 +144,7 @@ docker exec tecnogest-app php artisan migrate --seed
 ### Con SQLite (Sin BD externa)
 
 ```bash
-docker compose -f docker-compose.sqlite.yml up -d
+docker compose -f docker-compose.sqlite.yml up -d --build
 docker exec tecnogest-sqlite php artisan migrate --seed
 # URL: http://localhost:8080
 ```
@@ -65,7 +152,7 @@ docker exec tecnogest-sqlite php artisan migrate --seed
 ### Standalone (Todo incluido)
 
 ```bash
-docker compose -f docker-compose.standalone.yml up -d
+docker compose -f docker-compose.standalone.yml up -d --build
 docker exec tecnogest-standalone php artisan migrate --seed
 # URL: http://localhost:8080
 ```
