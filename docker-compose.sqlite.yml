@@ -1,0 +1,50 @@
+# ============================================
+# TecnoGest - Variante SQLite
+# Base de datos embebida
+# ============================================
+
+services:
+  tecnogest:
+    image: gzus07/tecnogest:sqlite
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tecnogest-sqlite
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      # App
+      APP_NAME: "TecnoGest"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8080
+      APP_KEY: ${APP_KEY:-base64:YOUR_KEY_HERE}
+
+      # Database
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /var/www/html/database/tecnogest.sqlite
+
+      # Cache & Session - Database
+      CACHE_DRIVER: database
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+
+      # Logging
+      LOG_CHANNEL: stack
+      LOG_LEVEL: warning
+    volumes:
+      - tecnogest-storage:/var/www/html/storage
+      - tecnogest-database:/var/www/html/database
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  tecnogest-storage:
+    driver: local
+  tecnogest-database:
+    driver: local

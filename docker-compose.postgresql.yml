@@ -1,0 +1,86 @@
+# ============================================
+# TecnoGest - Variante PostgreSQL
+# Producción optimizada
+# ============================================
+
+services:
+  tecnogest:
+    image: gzus07/tecnogest:postgresql
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tecnogest-app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      # App
+      APP_NAME: "TecnoGest"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8080
+      APP_KEY: ${APP_KEY:-base64:YOUR_KEY_HERE}
+
+      # Database
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-tecnogest}
+      DB_USERNAME: ${DB_USERNAME:-tecnogest}
+      DB_PASSWORD: ${DB_PASSWORD:-tecnogest2024}
+
+      # Cache & Session - Database
+      CACHE_DRIVER: database
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+
+      # Logging
+      LOG_CHANNEL: stack
+      LOG_LEVEL: warning
+    volumes:
+      - tecnogest-storage:/var/www/html/storage
+    networks:
+      - tecnogest-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: tecnogest-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-tecnogest}
+      POSTGRES_USER: ${DB_USERNAME:-tecnogest}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-tecnogest2024}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - tecnogest-postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    networks:
+      - tecnogest-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-tecnogest} -d ${DB_DATABASE:-tecnogest}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+networks:
+  tecnogest-network:
+    driver: bridge
+
+volumes:
+  tecnogest-storage:
+    driver: local
+  tecnogest-postgres-data:
+    driver: local

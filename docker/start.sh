@@ -1,62 +1,99 @@
 #!/bin/sh
 # ═══════════════════════════════════════════════════════════════
-# TecnoGest - Docker Container Startup Script (Railway)
+# TecnoGest - Docker Container Startup Script
+# Soporte para múltiples entornos y bases de datos
 # ═══════════════════════════════════════════════════════════════
 
 set -e
 
-echo "🚀 Starting TecnoGest on Railway..."
+echo "🚀 Starting TecnoGest..."
 echo "📍 Environment: ${APP_ENV:-production}"
-echo "🔌 Port: ${PORT:-8080}"
+echo "🗄️  Database: ${DB_CONNECTION:-mysql}"
 
-# Crear directorios necesarios
+# ── Crear directorios necesarios ──
 mkdir -p /var/log/php /var/log/supervisor /var/log/nginx /run/nginx
+mkdir -p storage/framework/{cache/data,sessions,views}
+mkdir -p storage/logs bootstrap/cache
 
-# Asegurar que existe .env (Railway usa variables de entorno)
-if [ ! -f ".env" ]; then
-    echo "📄 Creating .env file..."
-    touch .env
+# ── Permisos ──
+chown -R www:www storage bootstrap/cache 2>/dev/null || true
+chmod -R 775 storage bootstrap/cache
+
+# ── SQLite: crear archivo si no existe ──
+if [ "$DB_CONNECTION" = "sqlite" ]; then
+    echo "📦 Configuring SQLite database..."
+    mkdir -p database
+    DB_FILE="${DB_DATABASE:-/var/www/html/database/tecnogest.sqlite}"
+    if [ ! -f "$DB_FILE" ]; then
+        touch "$DB_FILE"
+        chown www:www "$DB_FILE" 2>/dev/null || true
+        chmod 664 "$DB_FILE"
+    fi
 fi
 
-# Configurar puerto dinámico de Railway en nginx
-if [ -n "$PORT" ]; then
-    echo "🔧 Configuring nginx for port $PORT..."
-    sed -i "s/listen 8080/listen $PORT/g" /etc/nginx/http.d/default.conf
-    sed -i "s/listen \[::\]:8080/listen [::]:$PORT/g" /etc/nginx/http.d/default.conf
+# ── Esperar a la base de datos (MySQL/PostgreSQL) ──
+if [ "$DB_CONNECTION" = "mysql" ] || [ "$DB_CONNECTION" = "pgsql" ]; then
+    echo "⏳ Waiting for database..."
+    attempt=0
+    max_attempts=30
+
+    while [ $attempt -lt $max_attempts ]; do
+        if php artisan db:monitor > /dev/null 2>&1; then
+            echo "✅ Database is ready!"
+            break
+        fi
+        attempt=$((attempt + 1))
+        echo "   Attempt $attempt/$max_attempts..."
+        sleep 2
+    done
+
+    if [ $attempt -eq $max_attempts ]; then
+        echo "⚠️  Database connection timeout - continuing anyway..."
+    fi
 fi
 
-# Verificar APP_KEY (debe estar configurada en Railway)
-if [ -z "$APP_KEY" ]; then
-    echo "⚠️  WARNING: APP_KEY not set! Please configure it in Railway variables."
-    echo "   Generate one with: php artisan key:generate --show"
+# ── Generar APP_KEY si no existe ──
+if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:YOUR_KEY_HERE" ]; then
+    echo "🔑 Generating application key..."
+    php artisan key:generate --force
 fi
 
-# Crear enlace simbólico de storage si no existe
+# ── Storage link ──
 if [ ! -L "public/storage" ]; then
-    echo "🔗 Creating storage link..."
-    php artisan storage:link || true
+    php artisan storage:link 2>/dev/null || true
 fi
 
-# Ejecutar migraciones automáticamente en producción
-if [ "$APP_ENV" = "production" ] || [ "$RUN_MIGRATIONS" = "true" ]; then
-    echo "📊 Running database migrations..."
-    php artisan migrate --force || echo "⚠️ Migrations skipped or already up to date"
+# ── Optimizaciones de producción ──
+if [ "$APP_ENV" = "production" ]; then
+    echo "⚡ Optimizing for production..."
+    php artisan config:cache 2>/dev/null || true
+    php artisan route:cache 2>/dev/null || true
+    php artisan view:cache 2>/dev/null || true
+    php artisan filament:optimize 2>/dev/null || true
+    php artisan icons:cache 2>/dev/null || true
 fi
 
-# Ejecutar seeders si es necesario
-if [ "$RUN_SEEDERS" = "true" ]; then
-    echo "🌱 Running database seeders..."
-    php artisan db:seed --class=ProductionSeeder --force || echo "⚠️ Seeders skipped"
+# ── Migraciones automáticas ──
+if [ "$AUTO_MIGRATE" = "true" ]; then
+    echo "📊 Running migrations..."
+    php artisan migrate --force
 fi
 
-# Limpiar y cachear configuración
-echo "⚡ Optimizing application..."
-php artisan config:cache || echo "⚠️ Config cache skipped"
-php artisan route:cache || echo "⚠️ Route cache skipped"
-php artisan view:cache || echo "⚠️ View cache skipped"
-php artisan event:cache || echo "⚠️ Event cache skipped"
+# ── Seeders automáticos ──
+if [ "$AUTO_SEED" = "true" ]; then
+    echo "🌱 Running seeders..."
+    php artisan db:seed --class="${SEEDER_CLASS:-DemoSeeder}" --force
+fi
 
-echo "✅ TecnoGest started successfully on port ${PORT:-8080}!"
+echo ""
+echo "╔══════════════════════════════════════════════════════════╗"
+echo "║         ✨ TecnoGest is ready!                          ║"
+echo "║                                                          ║"
+echo "║  🌐 Access: http://localhost:8080                       ║"
+echo "║  📧 Default: admin@tecnogest.com / password             ║"
+echo "║                                                          ║"
+echo "╚══════════════════════════════════════════════════════════╝"
+echo ""
 
-# Iniciar Supervisor (gestiona nginx + php-fpm)
+# Iniciar Supervisor (gestiona Nginx + PHP-FPM)
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

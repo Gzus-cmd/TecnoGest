@@ -1,0 +1,50 @@
+# ============================================
+# TecnoGest - Variante Standalone (Sin BD)
+# Solo con cache y session en archivos
+# ============================================
+
+services:
+  tecnogest:
+    image: gzus07/tecnogest:standalone
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tecnogest-standalone
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      # App
+      APP_NAME: "TecnoGest"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8080
+      APP_KEY: ${APP_KEY:-base64:YOUR_KEY_HERE}
+
+      # Database - File based
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /var/www/html/database/database.sqlite
+
+      # Cache & Session
+      CACHE_DRIVER: file
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
+
+      # Logging
+      LOG_CHANNEL: stack
+      LOG_LEVEL: error
+    volumes:
+      - tecnogest-storage:/var/www/html/storage
+      - tecnogest-database:/var/www/html/database
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  tecnogest-storage:
+    driver: local
+  tecnogest-database:
+    driver: local

@@ -1,0 +1,54 @@
+# ═══════════════════════════════════════════════════════════════
+# TecnoGest - .dockerignore
+# Excluir archivos innecesarios del contexto de build
+# ═══════════════════════════════════════════════════════════════
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Node (se instala en build)
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Laravel - Archivos sensibles
+/storage/*.key
+/storage/debugbar
+/storage/logs/*
+.env
+.env.*
+!.env.example
+
+# Tests (no necesarios en producción)
+tests
+phpunit.xml
+.phpunit.result.cache
+
+# Documentación
+*.md
+!DOCKER_README.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+Jenkinsfile
+
+# Docker compose (no necesarios dentro del container)
+docker-compose*.yml
+.dockerignore
+
+# Misc
+.editorconfig
+.php_cs
+.php_cs.cache
+.phpcs.xml
+.phpmd.xml
